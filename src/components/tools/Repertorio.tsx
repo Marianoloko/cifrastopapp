@@ -1,0 +1,297 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { Link2, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { SongView, type Song } from "@/components/song/SongView";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { importSongFromLink } from "@/lib/import-song.functions";
+import { NOTES_SHARP } from "@/lib/chords";
+import type { CifraThemeId } from "@/lib/cifra-themes";
+
+const CAPOS = [
+  "Sem Capo",
+  "1ª casa",
+  "2ª casa",
+  "3ª casa",
+  "4ª casa",
+  "5ª casa",
+  "6ª casa",
+  "7ª casa",
+];
+
+const emptyForm = { title: "", artist: "", key: "C", capo: "Sem Capo", body: "" };
+
+export function Repertorio({
+  userId,
+  themeId,
+  onThemeChange,
+}: {
+  userId: string;
+  themeId: CifraThemeId;
+  onThemeChange: (id: CifraThemeId) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [link, setLink] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const importFn = useServerFn(importSongFromLink);
+
+  const songsQuery = useQuery({
+    queryKey: ["songs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("songs")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Song[];
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("songs").insert({ ...form, user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Música salva na nuvem!");
+      setForm(emptyForm);
+      setShowForm(false);
+      void queryClient.invalidateQueries({ queryKey: ["songs"] });
+    },
+    onError: () => toast.error("Não consegui salvar a música."),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("songs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["songs"] });
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async () => importFn({ data: { url: link.trim() } }),
+    onSuccess: (result) => {
+      setForm({
+        title: result.title,
+        artist: result.artist,
+        key: result.key,
+        capo: result.capo,
+        body: result.body,
+      });
+      setShowForm(true);
+      setLink("");
+      toast.success("Cifra importada! Revise e salve no seu repertório.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Não consegui importar esse link."),
+  });
+
+  const songs = songsQuery.data ?? [];
+  const filtered = songs.filter((song) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    return (
+      song.title.toLowerCase().includes(term) || song.artist.toLowerCase().includes(term)
+    );
+  });
+
+  const selected = songs.find((song) => song.id === selectedId) ?? null;
+
+  if (selected) {
+    return (
+      <SongView
+        song={selected}
+        themeId={themeId}
+        onThemeChange={onThemeChange}
+        onBack={() => setSelectedId(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search
+          className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar por título ou artista"
+          className="pl-9"
+        />
+      </div>
+
+      <div className="space-y-2 rounded-xl border bg-card p-4">
+        <Label htmlFor="link">Importar por link (YouTube ou site de cifras)</Label>
+        <div className="flex gap-2">
+          <Input
+            id="link"
+            value={link}
+            onChange={(event) => setLink(event.target.value)}
+            placeholder="https://..."
+          />
+          <Button
+            onClick={() => importMutation.mutate()}
+            disabled={!link.trim() || importMutation.isPending}
+          >
+            {importMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Link2 className="size-4" aria-hidden="true" />
+            )}
+            Importar
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          A IA monta a cifra com tons e estrutura a partir do link para você revisar antes de salvar.
+        </p>
+      </div>
+
+      <Button variant={showForm ? "outline" : "default"} className="w-full" onClick={() => setShowForm((v) => !v)}>
+        <Plus className="size-4" aria-hidden="true" />
+        {showForm ? "Fechar formulário" : "Nova música"}
+      </Button>
+
+      {showForm ? (
+        <form
+          className="space-y-3 rounded-xl border bg-card p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!form.title.trim()) {
+              toast.error("Informe o título da música.");
+              return;
+            }
+            saveMutation.mutate();
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="title">Título*</Label>
+            <Input
+              id="title"
+              value={form.title}
+              maxLength={120}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="artist">Artista</Label>
+            <Input
+              id="artist"
+              value={form.artist}
+              maxLength={120}
+              onChange={(event) => setForm({ ...form, artist: event.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Tom</Label>
+              <Select value={form.key} onValueChange={(value) => setForm({ ...form, key: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NOTES_SHARP.map((note) => (
+                    <SelectItem key={note} value={note}>
+                      {note}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Capotraste</Label>
+              <Select value={form.capo} onValueChange={(value) => setForm({ ...form, capo: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAPOS.map((capo) => (
+                    <SelectItem key={capo} value={capo}>
+                      {capo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="body">Corpo da cifra</Label>
+            <Textarea
+              id="body"
+              rows={12}
+              className="font-mono text-xs"
+              value={form.body}
+              onChange={(event) => setForm({ ...form, body: event.target.value })}
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={saveMutation.isPending}>
+            Salvar na nuvem
+          </Button>
+        </form>
+      ) : null}
+
+      <div className="space-y-2">
+        {songsQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando repertório…</p>
+        ) : filtered.length === 0 ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Nenhuma música no repertório ainda.
+          </p>
+        ) : (
+          filtered.map((song) => (
+            <div
+              key={song.id}
+              className="flex items-center gap-3 rounded-xl border bg-card p-3"
+            >
+              <button
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                onClick={() => setSelectedId(song.id)}
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-soft text-accent-foreground">
+                  <Music className="size-4" aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {song.title}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {song.artist || "Sem artista"} · {song.key} · {song.capo}
+                  </span>
+                </span>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteMutation.mutate(song.id)}
+                aria-label={`Excluir ${song.title}`}
+              >
+                <Trash2 className="size-4 text-destructive" aria-hidden="true" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
