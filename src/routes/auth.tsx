@@ -1,37 +1,23 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Auth } from "@supabase/auth-ui-react";
-import { ThemeSass } from "@supabase/auth-ui-shared";
+import { createFileRoute } from '@tanstack/react-router'
+import { PlanGrid } from '@/components/PlanGrid'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-export const Route = createFileRoute("/auth")({
-  component: AuthPage,
-});
+export const Route = createFileRoute('/_authenticated/admin')({
+  component: AdminPage,
+})
 
-function AuthPage() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        // Redireciona para o app apenas se o login for confirmado
-        navigate({ to: "/app" });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
+function AdminPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4">
-        <h1 className="text-2xl font-bold text-center">Entrar no CifraStop</h1>
-        <Auth
-          supabaseClient={supabase}
-          appearance={{ theme: ThemeSass }}
-          providers={[]}
-        />
-      </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Painel de Administração</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Gerenciar Planos de Assinatura</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PlanGrid />
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
