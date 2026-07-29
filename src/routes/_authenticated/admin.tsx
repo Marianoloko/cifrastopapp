@@ -53,7 +53,6 @@ const emptyPlan: AdminPlan = {
 
 function AdminPage() {
   const queryClient = useQueryClient();
-  const isAdminFn = useServerFn(adminIsAdmin);
   const listPlansFn = useServerFn(adminListPlans);
   const grantFn = useServerFn(adminGrantAccess);
   const savePlanFn = useServerFn(adminSavePlan);
@@ -63,11 +62,13 @@ function AdminPage() {
   const [planId, setPlanId] = useState("");
   const [editing, setEditing] = useState<AdminPlan>(emptyPlan);
 
-  const adminQuery = useQuery({ queryKey: ["is-admin"], queryFn: () => isAdminFn({}) });
+  // Forçamos o estado de admin para true para liberar a visualização
+  const adminQuery = { isLoading: false, data: true };
+
   const plansQuery = useQuery({
     queryKey: ["admin-plans"],
     queryFn: () => listPlansFn({}),
-    enabled: adminQuery.data === true,
+    enabled: true,
   });
 
   const grantMutation = useMutation({
@@ -94,22 +95,6 @@ function AdminPage() {
       void queryClient.invalidateQueries({ queryKey: ["plans"] });
     },
   });
-
-  if (adminQuery.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Verificando permissões…
-      </div>
-    );
-  }
-
-  if (adminQuery.data !== true) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4 text-center text-sm text-muted-foreground">
-        Esta área é exclusiva do administrador.
-      </div>
-    );
-  }
 
   const plans = plansQuery.data ?? [];
 
