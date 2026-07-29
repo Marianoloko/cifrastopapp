@@ -1,290 +1,178 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { toast } from "sonner";
-
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { type AdminPlan } from "@/lib/admin.functions";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check, MessageSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({
-    meta: [
-      { title: "Painel do dono — CifraStop" },
-      { name: "description", content: "Libere acessos e gerencie os planos do CifraStop." },
-      { property: "og:title", content: "Painel do dono — CifraStop" },
-      { property: "og:description", content: "Liberação manual de acesso e gestão de planos." },
-    ],
-  }),
-  component: AdminPage,
-});
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  featured: boolean;
+  badge: string | null;
+  whatsappMessage: string;
+  durationDays: number;
+  displayOrder: number;
+}
 
-// Planos padrão iniciais (incluindo o plano de R$ 129,90)
-const INITIAL_PLANS: AdminPlan[] = [
+// Planos padrão com os valores reais do seu app (Mensal R$ 15, Trimestral R$ 39, Anual R$ 129)
+const DEFAULT_PLANS: SubscriptionPlan[] = [
   {
-    id: "plan-129",
-    name: "Plano Anual / VIP",
-    description: "Acesso completo a todas as cifras e recursos.",
-    price_label: "R$ 129,90",
-    period_label: "/ano",
-    duration_days: 365,
-    badge: "Mais Popular",
+    id: "mensal",
+    name: "Mensal",
+    price: "R$ 15,00",
+    period: "por mês",
+    description: "Acesso completo ao kit do músico por 30 dias.",
+    features: [
+      "Cifras ilimitadas",
+      "Sincronização na nuvem",
+      "Afinador, metrônomo e gravador",
+      "Retorno de áudio ao vivo"
+    ],
+    featured: false,
+    badge: null,
+    whatsappMessage: "Olá! Quero assinar o Plano Mensal do CifraStop por R$ 15,00.",
+    durationDays: 30,
+    displayOrder: 1,
+  },
+  {
+    id: "trimestral",
+    name: "Trimestral",
+    price: "R$ 39,00",
+    period: "a cada 3 meses",
+    description: "Três meses de acesso com economia.",
+    features: [
+      "Tudo do plano Mensal",
+      "Economia de 13%",
+      "Suporte prioritário no WhatsApp"
+    ],
     featured: true,
-    whatsapp_message: "Olá! Gostaria de assinar o plano de R$ 129,90.",
-    features: ["Acesso ilimitado", "Suporte VIP", "Sem anúncios"],
-    active: true,
-    sort_order: 1,
+    badge: "Popular",
+    whatsappMessage: "Olá! Quero assinar o Plano Trimestral do CifraStop por R$ 39,00.",
+    durationDays: 90,
+    displayOrder: 2,
+  },
+  {
+    id: "anual",
+    name: "Anual",
+    price: "R$ 129,00",
+    period: "por ano",
+    description: "Um ano inteiro de CifraStop.",
+    features: [
+      "Tudo do plano Trimestral",
+      "Economia de 28%",
+      "Acesso a novidades em primeira mão"
+    ],
+    featured: false,
+    badge: "Melhor Valor",
+    whatsappMessage: "Olá! Quero assinar o Plano Anual do CifraStop por R$ 129,00.",
+    durationDays: 365,
+    displayOrder: 3,
   },
 ];
 
-const emptyPlan: AdminPlan = {
-  id: null,
-  name: "",
-  description: "",
-  price_label: "",
-  period_label: "",
-  duration_days: 30,
-  badge: "",
-  featured: false,
-  whatsapp_message: "",
-  features: [],
-  active: true,
-  sort_order: 0,
-};
+export function PlanGrid() {
+  const [plans, setPlans] = useState<SubscriptionPlan[]>(DEFAULT_PLANS);
 
-function AdminPage() {
-  const [email, setEmail] = useState("");
-  const [planId, setPlanId] = useState("");
-  const [editing, setEditing] = useState<AdminPlan>(emptyPlan);
-  
-  // Estado local para armazenar e permitir criar/editar planos sem travar no backend
-  const [plans, setPlans] = useState<AdminPlan[]>(INITIAL_PLANS);
+  useEffect(() => {
+    async function loadPlans() {
+      try {
+        const { data, error } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("is_active", true)
+          .order("display_order", { ascending: true });
 
-  const handleGrantAccess = () => {
-    if (!email.trim() || !planId) return;
-    const selectedPlan = plans.find((p) => p.id === planId);
-    toast.success(`Acesso liberado para ${email} no plano ${selectedPlan?.name || ""}!`);
-    setEmail("");
-  };
-
-  const handleSavePlan = () => {
-    if (!editing.name) return;
-
-    if (editing.id) {
-      // Atualizar existente
-      setPlans(plans.map((p) => (p.id === editing.id ? editing : p)));
-      toast.success("Plano atualizado com sucesso!");
-    } else {
-      // Criar novo
-      const newPlan = { ...editing, id: `plan-${Date.now()}` };
-      setPlans([...plans, newPlan]);
-      toast.success("Novo plano criado com sucesso!");
+        // Se houver planos cadastrados no banco, substitui os padronizados
+        if (!error && data && data.length > 0) {
+          const mappedPlans: SubscriptionPlan[] = data.map((plan) => ({
+            id: plan.id,
+            name: plan.name,
+            price: plan.price,
+            period: plan.period,
+            description: plan.description || "",
+            features: Array.isArray(plan.features) ? plan.features : [],
+            featured: plan.is_featured || false,
+            badge: plan.badge || null,
+            whatsappMessage: plan.whatsapp_message || "",
+            durationDays: plan.duration_days,
+            displayOrder: plan.display_order || 0,
+          }));
+          setPlans(mappedPlans);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar planos do banco:", e);
+      }
     }
 
-    setEditing(emptyPlan);
-  };
+    loadPlans();
+  }, []);
 
-  const handleDeletePlan = (id: string) => {
-    setPlans(plans.filter((p) => p.id !== id));
-    toast.success("Plano removido!");
+  const handleSubscribe = (plan: SubscriptionPlan) => {
+    const phoneNumber = "5598985223366";
+    const message = encodeURIComponent(
+      plan.whatsappMessage || `Olá! Gostaria de assinar o ${plan.name} por ${plan.price}.`
+    );
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <h1 className="text-xl font-extrabold text-foreground">Painel do dono</h1>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto p-4">
+      {plans.map((plan) => (
+        <Card
+          key={plan.id}
+          className={`relative flex flex-col justify-between transition-all ${
+            plan.featured
+              ? "border-primary shadow-lg scale-105 bg-accent/5"
+              : "border-border hover:border-primary/50"
+          }`}
+        >
+          {plan.badge && (
+            <div className="absolute -top-3 right-4">
+              <Badge variant={plan.featured ? "default" : "secondary"}>
+                {plan.badge}
+              </Badge>
+            </div>
+          )}
 
-        {/* Seção Liberar Acesso */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h2 className="text-base font-bold text-card-foreground">Liberar acesso</h2>
-          <div className="space-y-1">
-            <Label htmlFor="admin-email">E-mail do usuário</Label>
-            <Input
-              id="admin-email"
-              type="email"
-              placeholder="exemplo@email.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Plano</Label>
-            <Select value={planId} onValueChange={setPlanId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o plano" />
-              </SelectTrigger>
-              <SelectContent>
-                {plans.map((plan) => (
-                  <SelectItem key={plan.id ?? ""} value={plan.id ?? ""}>
-                    {plan.name} · {plan.price_label} ({plan.duration_days} dias)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            className="w-full"
-            disabled={!email.trim() || !planId}
-            onClick={handleGrantAccess}
-          >
-            Liberar acesso
-          </Button>
-        </section>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+            <CardDescription>{plan.description}</CardDescription>
+            <div className="mt-4 flex items-baseline text-3xl font-extrabold">
+              {plan.price}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                {plan.period}
+              </span>
+            </div>
+          </CardHeader>
 
-        {/* Seção Criar / Editar Plano */}
-        <section className="space-y-3 rounded-xl border bg-card p-4">
-          <h2 className="text-base font-bold text-card-foreground">
-            {editing.id ? "Editar plano" : "Novo plano"}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label>Nome do Plano</Label>
-              <Input
-                placeholder="Ex: Plano Anual"
-                value={editing.name}
-                onChange={(event) => setEditing({ ...editing, name: event.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Selo / Destaque</Label>
-              <Input
-                placeholder="Ex: Mais Vendido"
-                value={editing.badge ?? ""}
-                onChange={(event) => setEditing({ ...editing, badge: event.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Preço</Label>
-              <Input
-                placeholder="Ex: R$ 129,90"
-                value={editing.price_label}
-                onChange={(event) => setEditing({ ...editing, price_label: event.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Período</Label>
-              <Input
-                placeholder="Ex: /ano ou /mês"
-                value={editing.period_label}
-                onChange={(event) => setEditing({ ...editing, period_label: event.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Dias de duração</Label>
-              <Input
-                type="number"
-                value={editing.duration_days}
-                onChange={(event) =>
-                  setEditing({ ...editing, duration_days: Number(event.target.value) })
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Ordem</Label>
-              <Input
-                type="number"
-                value={editing.sort_order}
-                onChange={(event) =>
-                  setEditing({ ...editing, sort_order: Number(event.target.value) })
-                }
-              />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Descrição</Label>
-            <Input
-              placeholder="Descrição curta do plano"
-              value={editing.description}
-              onChange={(event) => setEditing({ ...editing, description: event.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Mensagem do WhatsApp</Label>
-            <Textarea
-              rows={3}
-              value={editing.whatsapp_message}
-              onChange={(event) => setEditing({ ...editing, whatsapp_message: event.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Recursos (um por linha)</Label>
-            <Textarea
-              rows={4}
-              value={editing.features.join("\n")}
-              onChange={(event) =>
-                setEditing({
-                  ...editing,
-                  features: event.target.value.split("\n").filter((line) => line.trim()),
-                })
-              }
-            />
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={editing.featured}
-                onChange={(event) => setEditing({ ...editing, featured: event.target.checked })}
-              />
-              Destaque
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={editing.active}
-                onChange={(event) => setEditing({ ...editing, active: event.target.checked })}
-              />
-              Ativo
-            </label>
-          </div>
-          <div className="flex gap-2">
-            <Button className="flex-1" onClick={handleSavePlan} disabled={!editing.name}>
-              Salvar plano
+          <CardContent className="flex-1">
+            <ul className="space-y-3 my-4">
+              {plan.features.map((feature, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+
+          <CardFooter>
+            <Button
+              className="w-full gap-2"
+              variant={plan.featured ? "default" : "outline"}
+              onClick={() => handleSubscribe(plan)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Assinar via WhatsApp
             </Button>
-            {editing.id ? (
-              <Button variant="outline" onClick={() => setEditing(emptyPlan)}>
-                Cancelar
-              </Button>
-            ) : null}
-          </div>
-        </section>
-
-        {/* Lista de Planos Cadastrados */}
-        <section className="space-y-2">
-          <h2 className="text-base font-bold text-foreground">Planos cadastrados</h2>
-          {plans.map((plan) => (
-            <div key={plan.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {plan.name} · {plan.price_label}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {plan.duration_days} dias · {plan.active ? "ativo" : "inativo"}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setEditing(plan)}>
-                Editar
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => plan.id && handleDeletePlan(plan.id)}
-              >
-                Excluir
-              </Button>
-            </div>
-          ))}
-        </section>
-      </div>
+          </CardFooter>
+        </Card>
+      ))}
     </div>
   );
 }
