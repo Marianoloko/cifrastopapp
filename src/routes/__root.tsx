@@ -78,20 +78,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CifraVocal Pro — Kit completo do músico" },
+      { title: "CifraStop — Kit completo do músico no celular" },
       {
         name: "description",
         content:
-          "CifraStop: repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador.",
+          "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas.",
       },
       { name: "author", content: "CifraStop" },
-      { property: "og:title", content: "CifraVocal Pro — Kit completo do músico" },
+      { property: "og:title", content: "CifraStop — Kit completo do músico no celular" },
       {
         property: "og:description",
-        content: "Cifras sincronizadas na nuvem e ferramentas de palco para músicos.",
+        content: "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "CifraStop — Kit completo do músico no celular" },
+      { name: "twitter:description", content: "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/b746840f-28ed-48e5-b27a-71f939fd28cb" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/b746840f-28ed-48e5-b27a-71f939fd28cb" },
     ],
     links: [
       {

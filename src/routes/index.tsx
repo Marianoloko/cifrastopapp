@@ -13,11 +13,11 @@ export const Route = createFileRoute("/")({
         content:
           "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas.",
       },
-      { property: "og:title", content: "CifraStop — Kit completo do músico" },
+      { property: "og:title", content: "CifraStop — Kit completo do músico no celular" },
       {
         property: "og:description",
         content:
-          "Cifras sincronizadas na nuvem e ferramentas de palco e ensaio no seu celular.",
+          "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas.",
       },
     ],
   }),
