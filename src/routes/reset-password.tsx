@@ -14,6 +14,8 @@ export const Route = createFileRoute("/reset-password")({
       { name: "description", content: "Defina uma nova senha para acessar sua conta do CifraStop." },
       { property: "og:title", content: "Redefinir senha — CifraStop" },
       { property: "og:description", content: "Escolha uma nova senha e volte para o seu repertório." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ResetPassword,

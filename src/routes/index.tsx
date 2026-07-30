@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Headphones, ListMusic, Mic, Music2, Timer } from "lucide-react";
 
-import { PlanGrid, usePlans } from "@/components/PlanGrid";
+import { PlanGrid } from "@/components/PlanGrid";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -19,6 +19,8 @@ export const Route = createFileRoute("/")({
         content:
           "Repertório de cifras na nuvem, retorno de áudio, afinador, metrônomo e gravador. Teste grátis por 4 horas.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
@@ -33,8 +35,6 @@ const FEATURES = [
 ];
 
 function Index() {
-  const { data: plans = [] } = usePlans();
-
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-4 py-4">
@@ -77,7 +77,7 @@ function Index() {
             Assine diretamente pelo WhatsApp e libere seu acesso instantaneamente.
           </p>
           <div className="mx-auto mt-6 max-w-5xl">
-            <PlanGrid plans={plans} />
+            <PlanGrid />
           </div>
         </section>
       </main>

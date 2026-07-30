@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({
+    meta: [
+      { title: "Painel admin — CifraStop" },
+      { name: "description", content: "Área administrativa para acompanhar os planos do CifraStop." },
+      { property: "og:title", content: "Painel admin — CifraStop" },
+      { property: "og:description", content: "Área administrativa protegida do CifraStop." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: AdminPage,
 });
 
@@ -22,7 +32,7 @@ function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Gerenciar Planos de Assinatura</CardTitle>
+          <CardTitle>Planos de Assinatura</CardTitle>
         </CardHeader>
         <CardContent>
           <PlanGrid />

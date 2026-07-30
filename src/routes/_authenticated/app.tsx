@@ -31,6 +31,8 @@ export const Route = createFileRoute("/_authenticated/app")({
         property: "og:description",
         content: "Seu repertório e suas ferramentas de palco sempre à mão.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AppPage,

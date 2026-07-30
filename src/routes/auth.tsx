@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,29 +9,62 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: search.redirect === "/admin" || search.redirect === "/app" ? search.redirect : undefined,
+  }),
+  head: () => ({
+    meta: [
+      { title: "Entrar — CifraStop" },
+      { name: "description", content: "Acesse sua conta do CifraStop para abrir seu kit musical." },
+      { property: "og:title", content: "Entrar — CifraStop" },
+      { property: "og:description", content: "Faça login para acessar repertório, retorno, afinador, metrônomo e gravador." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
+  const search = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
+  const destination = useMemo(() => search.redirect ?? "/app", [search.redirect]);
 
-  // Se já estiver logado, manda direto para a tela principal (/app)
   useEffect(() => {
-    async function checkExistingSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate({ to: "/app" });
-      }
-    }
-    checkExistingSession();
-  }, [navigate]);
+    let cancelled = false;
 
-  const handleLogin = async (e: React.FormEvent) => {
+    async function checkExistingSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (session) {
+        setRedirecting(true);
+        void navigate({ to: destination, replace: true });
+        return;
+      }
+
+      setCheckingSession(false);
+    }
+
+    void checkExistingSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [destination, navigate]);
+
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || redirecting) return;
+
     setLoading(true);
     setErrorMsg(null);
 
@@ -47,8 +80,8 @@ function AuthPage() {
       }
 
       if (data.session) {
-        // Login realizado com sucesso!
-        navigate({ to: "/app" });
+        setRedirecting(true);
+        await navigate({ to: destination, replace: true });
       }
     } catch (err) {
       console.error("Erro inesperado no login:", err);
@@ -57,6 +90,15 @@ function AuthPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession || redirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-sm text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+        Verificando acesso…
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
@@ -97,7 +139,7 @@ function AuthPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || redirecting}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
