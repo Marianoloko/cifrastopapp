@@ -30,7 +30,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [checkingSession, setCheckingSession] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -38,6 +38,7 @@ function AuthPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setCheckingSession(true);
 
     async function checkExistingSession() {
       const {
@@ -91,15 +92,6 @@ function AuthPage() {
     }
   };
 
-  if (checkingSession || redirecting) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-        Verificando acesso…
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
@@ -108,6 +100,12 @@ function AuthPage() {
           <CardDescription>Digite suas credenciais para acessar a plataforma</CardDescription>
         </CardHeader>
         <CardContent>
+          {checkingSession || redirecting ? (
+            <div className="flex items-center justify-center rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              Verificando acesso…
+            </div>
+          ) : null}
           <form onSubmit={handleLogin} className="space-y-4">
             {errorMsg && (
               <Alert variant="destructive">
