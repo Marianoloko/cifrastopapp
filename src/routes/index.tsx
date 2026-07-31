@@ -3,6 +3,7 @@ import { Headphones, ListMusic, Mic, Music2, Timer } from "lucide-react";
 
 import { PlanGrid } from "@/components/PlanGrid";
 import { Button } from "@/components/ui/button";
+import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,7 +39,10 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-4 py-4">
-        <span className="text-lg font-extrabold tracking-tight text-foreground">CifraStop</span>
+        <span className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-foreground">
+          <img src={logoAsset.url} alt="Logo CifraStop" className="size-8" />
+          CifraStop
+        </span>
         <Button asChild variant="outline" size="sm">
           <Link to="/auth">Entrar</Link>
         </Button>
@@ -46,6 +50,11 @@ function Index() {
 
       <main>
         <section className="px-4 pb-10 pt-6 text-center">
+          <img
+            src={logoAsset.url}
+            alt="Logo CifraStop: palheta verde com guitarra dourada"
+            className="mx-auto mb-5 size-28 md:size-36"
+          />
           <h1 className="text-3xl font-extrabold leading-tight text-foreground md:text-5xl">
             CifraVocal Pro — Kit completo do músico
           </h1>
