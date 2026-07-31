@@ -155,3 +155,140 @@ export const adminGrantAccess = createServerFn({ method: "POST" })
 
     return { until: until.toLocaleDateString("pt-BR") };
   });
+export type AdminUser = {
+  id: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+  trial_started_at: string;
+  banned: boolean;
+  banned_at: string | null;
+  referral_code: string | null;
+  referrals_count: number;
+  songs_count: number;
+  is_admin: boolean;
+  subscription_status: string;
+  current_period_end: string | null;
+  access: "vip" | "trial" | "expired" | "banido";
+};
+
+const TRIAL_MS = 4 * 60 * 60 * 1000;
+
+export const adminListUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<AdminUser[]> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [profilesRes, subsRes, rolesRes, songsRes] = await Promise.all([
+      supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabaseAdmin.from("subscriptions").select("user_id, status, current_period_end"),
+      supabaseAdmin.from("user_roles").select("user_id, role"),
+      supabaseAdmin.from("songs").select("user_id"),
+    ]);
+    if (profilesRes.error) throw new Error(profilesRes.error.message);
+
+    const subs = new Map<string, any>((subsRes.data ?? []).map((s: any) => [s.user_id, s]));
+    const admins = new Set<string>(
+      (rolesRes.data ?? []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id),
+    );
+    const songs = new Map<string, number>();
+    for (const song of songsRes.data ?? []) {
+      songs.set((song as any).user_id, (songs.get((song as any).user_id) ?? 0) + 1);
+    }
+    const referrals = new Map<string, number>();
+    for (const profile of profilesRes.data ?? []) {
+      const ref = (profile as any).referred_by;
+      if (ref) referrals.set(ref, (referrals.get(ref) ?? 0) + 1);
+    }
+
+    const now = Date.now();
+    return (profilesRes.data ?? []).map((profile: any) => {
+      const sub = subs.get(profile.id);
+      const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end).getTime() : null;
+      const vip = sub?.status === "active" && (periodEnd === null || periodEnd > now);
+      const trialEnd = new Date(profile.trial_started_at).getTime() + TRIAL_MS;
+      const access: AdminUser["access"] = profile.banned
+        ? "banido"
+        : vip
+          ? "vip"
+          : trialEnd > now
+            ? "trial"
+            : "expired";
+      return {
+        id: profile.id,
+        email: profile.email ?? "",
+        phone: profile.phone ?? null,
+        created_at: profile.created_at,
+        trial_started_at: profile.trial_started_at,
+        banned: Boolean(profile.banned),
+        banned_at: profile.banned_at ?? null,
+        referral_code: profile.referral_code ?? null,
+        referrals_count: referrals.get(profile.id) ?? 0,
+        songs_count: songs.get(profile.id) ?? 0,
+        is_admin: admins.has(profile.id),
+        subscription_status: sub?.status ?? "inactive",
+        current_period_end: sub?.current_period_end ?? null,
+        access,
+      };
+    });
+  });
+
+export const adminSetBan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ userId: z.string().uuid(), banned: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("Você não pode banir a própria conta.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        banned: data.banned,
+        banned_at: data.banned ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.userId);
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      ban_duration: data.banned ? "876000h" : "none",
+    });
+    return { ok: true };
+  });
+
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ userId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    if (data.userId === context.userId) throw new Error("Você não pode excluir a própria conta.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminSetAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ userId: z.string().uuid(), days: z.number().int().min(0).max(3650) }).parse(data),
+  )
+  .handler(async ({ data, context }): Promise<{ until: string | null }> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const until =
+      data.days > 0 ? new Date(Date.now() + data.days * 24 * 60 * 60 * 1000).toISOString() : null;
+    const { error } = await supabaseAdmin.from("subscriptions").upsert(
+      {
+        user_id: data.userId,
+        status: data.days > 0 ? "active" : "inactive",
+        current_period_end: until,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { until };
+  });
