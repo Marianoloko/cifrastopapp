@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: search.redirect === "/admin" || search.redirect === "/app" ? search.redirect : undefined,
+    ref: typeof search.ref === "string" && search.ref.trim() ? search.ref.trim().toUpperCase() : undefined,
   }),
   head: () => ({
     meta: [
@@ -31,6 +32,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [referralCode, setReferralCode] = useState(search.ref ?? "");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -38,6 +40,26 @@ function AuthPage() {
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const navigate = useNavigate();
   const destination = useMemo(() => search.redirect ?? "/app", [search.redirect]);
+
+  useEffect(() => {
+    if (search.ref) {
+      setReferralCode(search.ref);
+      setMode("signup");
+    }
+  }, [search.ref]);
+
+  const applyReferral = async () => {
+    const code = referralCode.trim();
+    if (!code) return;
+    try {
+      const { data, error } = await supabase.rpc("apply_referral_code", { _code: code });
+      if (error) return;
+      const result = data as unknown as { ok: boolean; message: string } | null;
+      if (result?.ok) setInfoMsg(result.message);
+    } catch {
+      // silencioso: o cadastro já foi concluído
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +116,7 @@ function AuthPage() {
         }
 
         if (data.session) {
+          await applyReferral();
           setRedirecting(true);
           await navigate({ to: destination, replace: true });
           return;
@@ -115,6 +138,7 @@ function AuthPage() {
       }
 
       if (data.session) {
+        await applyReferral();
         setRedirecting(true);
         await navigate({ to: destination, replace: true });
       }
@@ -217,6 +241,23 @@ function AuthPage() {
                 required
               />
             </div>
+
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="referralCode">Código de indicação (opcional)</Label>
+                <Input
+                  id="referralCode"
+                  type="text"
+                  placeholder="Ex.: A1B2C3D4"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  className="tracking-widest"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Com um código válido você ganha 24 horas de acesso VIP.
+                </p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading || redirecting}>
               {loading ? (
