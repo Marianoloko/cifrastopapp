@@ -132,12 +132,15 @@ export function PlanGrid({ plans: providedPlans, className, emptyMessage }: Plan
 
   return (
     <div className={cn("grid gap-3 md:grid-cols-3", className)}>
-      {plans.map((plan) => (
+      {plans.map((plan) => {
+        const isFreeRequest = plan.price_label.toLowerCase().includes("grátis");
+        return (
         <Card
           key={plan.id}
           className={cn(
             "relative flex min-h-72 flex-col",
             plan.featured ? "border-primary bg-primary/5 shadow-md" : undefined,
+            isFreeRequest ? "border-dashed" : undefined,
           )}
         >
           {plan.badge ? (
@@ -170,6 +173,7 @@ export function PlanGrid({ plans: providedPlans, className, emptyMessage }: Plan
 
             <Button
               type="button"
+              variant={isFreeRequest ? "outline" : "default"}
               className="w-full"
               onClick={() =>
                 openWhatsApp(
@@ -177,11 +181,12 @@ export function PlanGrid({ plans: providedPlans, className, emptyMessage }: Plan
                 )
               }
             >
-              Assinar pelo WhatsApp
+              {isFreeRequest ? "Pedir pelo WhatsApp" : "Assinar pelo WhatsApp"}
             </Button>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }
