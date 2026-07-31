@@ -51,6 +51,7 @@ export function useAccess() {
     status = "expired";
   } else if (query.data) {
     const subscription = query.data.subscription;
+    const banned = Boolean((query.data.profile as { banned?: boolean } | null)?.banned);
     const trialStart = query.data.profile?.trial_started_at
       ? new Date(query.data.profile.trial_started_at).getTime()
       : null;
@@ -61,7 +62,9 @@ export function useAccess() {
     const subscriptionActive =
       subscription?.status === "active" && (periodEnd === null || periodEnd > now);
 
-    if (subscriptionActive) {
+    if (banned) {
+      status = "expired";
+    } else if (subscriptionActive) {
       status = "subscriber";
     } else if (trialStart !== null && trialStart + TRIAL_MS > now) {
       status = "trial";
