@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
-import { Link2, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileUp, Link2, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
@@ -34,6 +34,17 @@ const CAPOS = [
 
 const emptyForm = { title: "", artist: "", key: "C", capo: "Sem Capo", body: "" };
 
+function cleanCifraText(raw: string) {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .replace(/```+/g, "")
+    .replace(/^\s*[*_#>-]{1,3}\s?/gm, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function Repertorio({
   userId,
   themeId,
@@ -49,6 +60,7 @@ export function Repertorio({
   const [form, setForm] = useState(emptyForm);
   const [link, setLink] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const importFn = useServerFn(importSongFromLink);
 
@@ -96,13 +108,41 @@ export function Repertorio({
         artist: result.artist,
         key: result.key,
         capo: result.capo,
-        body: result.body,
+        body: cleanCifraText(result.body),
       });
       setShowForm(true);
       setLink("");
       toast.success("Cifra importada! Revise e salve no seu repertório.");
     },
     onError: (error: Error) => toast.error(error.message || "Não consegui importar esse link."),
+  });
+
+  const fileImportMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const rows = await Promise.all(
+        files.map(async (file) => {
+          const text = cleanCifraText(await file.text());
+          const name = file.name.replace(/\.(txt|text|md|cifra)$/i, "").trim();
+          const [maybeArtist, maybeTitle] = name.split(/\s*-\s*/);
+          return {
+            user_id: userId,
+            title: (maybeTitle || maybeArtist || "Sem título").slice(0, 120),
+            artist: maybeTitle ? maybeArtist.slice(0, 120) : "",
+            key: "C",
+            capo: "Sem Capo",
+            body: text,
+          };
+        }),
+      );
+      const { error } = await supabase.from("songs").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`${count} música(s) importada(s) do arquivo!`);
+      void queryClient.invalidateQueries({ queryKey: ["songs"] });
+    },
+    onError: () => toast.error("Não consegui importar esses arquivos."),
   });
 
   const songs = songsQuery.data ?? [];
@@ -143,7 +183,7 @@ export function Repertorio({
       </div>
 
       <div className="space-y-2 rounded-xl border bg-card p-4">
-        <Label htmlFor="link">Importar por link (YouTube ou site de cifras)</Label>
+        <Label htmlFor="link">Importar por link de site de cifras</Label>
         <div className="flex gap-2">
           <Input
             id="link"
@@ -165,6 +205,39 @@ export function Repertorio({
         </div>
         <p className="text-xs text-muted-foreground">
           A IA monta a cifra com tons e estrutura a partir do link para você revisar antes de salvar.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-xl border bg-card p-4">
+        <Label>Importar cifras salvas (TXT)</Label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.text,.md,.cifra,text/plain"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            if (files.length) fileImportMutation.mutate(files);
+            event.target.value = "";
+          }}
+        />
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={fileImportMutation.isPending}
+        >
+          {fileImportMutation.isPending ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <FileUp className="size-4" aria-hidden="true" />
+          )}
+          Escolher arquivos TXT
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Traga cifras exportadas do Recifra ou de qualquer app em .txt. Use o nome do arquivo como
+          "Artista - Música" para preencher automaticamente.
         </p>
       </div>
 
