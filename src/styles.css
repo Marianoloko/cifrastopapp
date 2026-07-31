@@ -157,3 +157,15 @@
     color: var(--color-foreground);
   }
 }
+  /* ... resto do seu código acima ... */
+}
+
+/* Ocultar o selo/botão do Lovable */
+#lovable-badge, 
+[data-lovable-badge],
+iframe[src*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
