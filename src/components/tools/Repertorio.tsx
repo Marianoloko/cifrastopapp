@@ -95,23 +95,6 @@ export function Repertorio({
     },
   });
 
-  const importMutation = useMutation({
-    mutationFn: async () => importFn({ data: { url: link.trim() } }),
-    onSuccess: (result) => {
-      setForm({
-        title: result.title,
-        artist: result.artist,
-        key: result.key,
-        capo: result.capo,
-        body: cleanCifraText(result.body),
-      });
-      setShowForm(true);
-      setLink("");
-      toast.success("Cifra importada! Revise e salve no seu repertório.");
-    },
-    onError: (error: Error) => toast.error(error.message || "Não consegui importar esse link."),
-  });
-
   const fileImportMutation = useMutation({
     mutationFn: async (files: File[]) => {
       const rows = await Promise.all(
@@ -175,32 +158,6 @@ export function Repertorio({
           placeholder="Buscar por título ou artista"
           className="pl-9"
         />
-      </div>
-
-      <div className="space-y-2 rounded-xl border bg-card p-4">
-        <Label htmlFor="link">Importar por link de site de cifras</Label>
-        <div className="flex gap-2">
-          <Input
-            id="link"
-            value={link}
-            onChange={(event) => setLink(event.target.value)}
-            placeholder="https://..."
-          />
-          <Button
-            onClick={() => importMutation.mutate()}
-            disabled={!link.trim() || importMutation.isPending}
-          >
-            {importMutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Link2 className="size-4" aria-hidden="true" />
-            )}
-            Importar
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          A IA monta a cifra com tons e estrutura a partir do link para você revisar antes de salvar.
-        </p>
       </div>
 
       <div className="space-y-2 rounded-xl border bg-card p-4">
