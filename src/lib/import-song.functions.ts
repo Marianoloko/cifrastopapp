@@ -34,7 +34,18 @@ export const importSongFromLink = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              "Você monta cifras para músicos em português do Brasil. A partir de um link (YouTube ou site de cifras), identifique a música e devolve uma cifra de estudo: título, artista, tom, capotraste e um corpo com marcações de seção entre colchetes ([Intro], [Primeira Parte], [Refrão]) e linhas de acordes. Nas linhas de acordes use apenas acordes (ex.: C  G  Am  F). Não reproduza a letra completa protegida por direitos autorais: escreva apenas a estrutura, os acordes e, no máximo, a primeira frase de cada seção como referência. Responda somente com JSON.",
+              [
+                "Você monta cifras para músicos em português do Brasil a partir de um link de site de cifras.",
+                "Devolva: título, artista, tom (só a tônica, ex.: C, G#, Bb), capotraste (ex.: 'Sem Capo' ou '2ª casa') e o corpo da cifra.",
+                "FORMATO OBRIGATÓRIO DO CORPO (texto puro, monoespaçado):",
+                "1. Cada seção começa com uma linha só com o nome entre colchetes: [Intro], [Primeira Parte], [Refrão], [Solo], [Final].",
+                "2. Depois do nome da seção, uma linha em branco não é usada; as linhas seguintes alternam: linha de acordes, depois linha de referência.",
+                "3. Linha de acordes contém APENAS acordes separados por dois ou mais espaços. Nunca misture acorde e texto na mesma linha.",
+                "4. Deixe exatamente uma linha em branco entre seções.",
+                "5. Não use markdown, tabelas, bullets, negrito, nem crase.",
+                "6. Não reproduza a letra completa (direitos autorais): no máximo a primeira frase de cada seção como referência.",
+                "Responda somente com JSON válido.",
+              ].join("\n"),
           },
           {
             role: "user",
