@@ -242,6 +242,23 @@ function AuthPage() {
               />
             </div>
 
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="referralCode">Código de indicação (opcional)</Label>
+                <Input
+                  id="referralCode"
+                  type="text"
+                  placeholder="Ex.: A1B2C3D4"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  className="tracking-widest"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Com um código válido você ganha 24 horas de acesso VIP.
+                </p>
+              </div>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading || redirecting}>
               {loading ? (
                 <>
