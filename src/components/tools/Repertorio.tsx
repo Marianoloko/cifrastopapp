@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
-import { FileUp, Link2, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
+import { FileUp, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { importSongFromLink } from "@/lib/import-song.functions";
 import { NOTES_SHARP } from "@/lib/chords";
 import type { CifraThemeId } from "@/lib/cifra-themes";
 
