@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/access";
 import type { CifraThemeId } from "@/lib/cifra-themes";
 import { cn } from "@/lib/utils";
+import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
@@ -99,9 +100,12 @@ function AppPage() {
       ) : null}
 
       <header className="flex items-center justify-between px-4 py-3">
-        <div>
+        <div className="flex items-center gap-2">
+          <img src={logoAsset.url} alt="Logo CifraStop" className="size-9" />
+          <div>
           <h1 className="text-base font-extrabold text-foreground">CifraVocal Pro</h1>
           <p className="text-[11px] text-muted-foreground">Kit completo do músico</p>
+          </div>
         </div>
         <Button variant="ghost" size="sm" onClick={signOut}>
           <LogOut className="size-4" aria-hidden="true" />
