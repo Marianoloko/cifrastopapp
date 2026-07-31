@@ -56,11 +56,8 @@ export function Repertorio({
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [link, setLink] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const importFn = useServerFn(importSongFromLink);
 
   const songsQuery = useQuery({
     queryKey: ["songs"],
