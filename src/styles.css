@@ -157,8 +157,6 @@
     color: var(--color-foreground);
   }
 }
-  /* ... resto do seu código acima ... */
-}
 
 /* Ocultar o selo/botão do Lovable */
 #lovable-badge, 
