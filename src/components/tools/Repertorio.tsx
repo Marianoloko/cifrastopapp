@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
-import { FileUp, Link2, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
+import { FileUp, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { importSongFromLink } from "@/lib/import-song.functions";
 import { NOTES_SHARP } from "@/lib/chords";
 import type { CifraThemeId } from "@/lib/cifra-themes";
 
@@ -58,11 +56,8 @@ export function Repertorio({
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [link, setLink] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const importFn = useServerFn(importSongFromLink);
 
   const songsQuery = useQuery({
     queryKey: ["songs"],
@@ -98,23 +93,6 @@ export function Repertorio({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["songs"] });
     },
-  });
-
-  const importMutation = useMutation({
-    mutationFn: async () => importFn({ data: { url: link.trim() } }),
-    onSuccess: (result) => {
-      setForm({
-        title: result.title,
-        artist: result.artist,
-        key: result.key,
-        capo: result.capo,
-        body: cleanCifraText(result.body),
-      });
-      setShowForm(true);
-      setLink("");
-      toast.success("Cifra importada! Revise e salve no seu repertório.");
-    },
-    onError: (error: Error) => toast.error(error.message || "Não consegui importar esse link."),
   });
 
   const fileImportMutation = useMutation({
@@ -180,32 +158,6 @@ export function Repertorio({
           placeholder="Buscar por título ou artista"
           className="pl-9"
         />
-      </div>
-
-      <div className="space-y-2 rounded-xl border bg-card p-4">
-        <Label htmlFor="link">Importar por link de site de cifras</Label>
-        <div className="flex gap-2">
-          <Input
-            id="link"
-            value={link}
-            onChange={(event) => setLink(event.target.value)}
-            placeholder="https://..."
-          />
-          <Button
-            onClick={() => importMutation.mutate()}
-            disabled={!link.trim() || importMutation.isPending}
-          >
-            {importMutation.isPending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Link2 className="size-4" aria-hidden="true" />
-            )}
-            Importar
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          A IA monta a cifra com tons e estrutura a partir do link para você revisar antes de salvar.
-        </p>
       </div>
 
       <div className="space-y-2 rounded-xl border bg-card p-4">
