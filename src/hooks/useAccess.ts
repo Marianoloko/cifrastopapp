@@ -45,13 +45,23 @@ export function useAccess() {
   let status: AccessStatus = "loading";
   let remainingMs = 0;
 
-  if (query.data) {
+  if (query.isError) {
+    status = "expired";
+  } else if (query.data === null) {
+    status = "expired";
+  } else if (query.data) {
     const subscription = query.data.subscription;
     const trialStart = query.data.profile?.trial_started_at
       ? new Date(query.data.profile.trial_started_at).getTime()
       : null;
 
-    if (subscription?.status === "active") {
+    const periodEnd = subscription?.current_period_end
+      ? new Date(subscription.current_period_end).getTime()
+      : null;
+    const subscriptionActive =
+      subscription?.status === "active" && (periodEnd === null || periodEnd > now);
+
+    if (subscriptionActive) {
       status = "subscriber";
     } else if (trialStart !== null && trialStart + TRIAL_MS > now) {
       status = "trial";
