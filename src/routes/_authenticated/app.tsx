@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Gift, Headphones, ListMusic, LogOut, Mic, Music2, Timer } from "lucide-react";
+import { Gift, Headphones, LifeBuoy, ListMusic, LogOut, Mic, Music2, Timer } from "lucide-react";
 
 import { Paywall } from "@/components/PlanGrid";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -11,6 +11,7 @@ import { Indicacoes } from "@/components/tools/Indicacoes";
 import { Metronomo } from "@/components/tools/Metronomo";
 import { Repertorio } from "@/components/tools/Repertorio";
 import { Retorno } from "@/components/tools/Retorno";
+import { Suporte } from "@/components/tools/Suporte";
 import { Button } from "@/components/ui/button";
 import { useAccess } from "@/hooks/useAccess";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ const TABS = [
   { id: "metronomo", label: "Metrônomo", icon: Timer },
   { id: "gravador", label: "Gravador", icon: Mic },
   { id: "indicacoes", label: "Indique", icon: Gift },
+  { id: "suporte", label: "Suporte", icon: LifeBuoy },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -126,9 +128,10 @@ function AppPage() {
         {tab === "metronomo" ? <Metronomo /> : null}
         {tab === "gravador" ? <Gravador /> : null}
         {tab === "indicacoes" ? <Indicacoes /> : null}
+        {tab === "suporte" ? <Suporte /> : null}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t bg-card">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-7 border-t bg-card">
         {TABS.map((item) => (
           <button
             key={item.id}
