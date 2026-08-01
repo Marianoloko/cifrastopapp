@@ -157,7 +157,7 @@ export function Afinador() {
         ) : null}
         {hasSignal ? (
           <p className="text-xs text-muted-foreground">
-            {note}m / {note}  •  leitura estabilizada (1x por segundo)
+            Vale para {note} maior e {note}m (menor) — leitura estabilizada a cada 1 segundo
           </p>
         ) : null}
         <p className="mt-1 text-sm text-muted-foreground">
