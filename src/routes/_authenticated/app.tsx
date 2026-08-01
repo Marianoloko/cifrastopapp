@@ -74,37 +74,7 @@ function AppPage() {
   const [tab, setTab] = useState<TabId>("repertorio");
   const [hubOpen, setHubOpen] = useState(false);
   const [hubTab, setHubTab] = useState<HubId>("indicacoes");
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const { data, status, remainingMs } = useAccess();
-
-  useEffect(() => {
-    const EDGE_SAFE = 24; // afasta da borda para não disparar o "voltar" do celular
-    const ZONE = 56; // largura da faixa sensível
-    const onStart = (event: TouchEvent) => {
-      const touch = event.touches[0];
-      if (!touch) return;
-      const fromRight = window.innerWidth - touch.clientX;
-      swipeStart.current =
-        fromRight > EDGE_SAFE && fromRight < EDGE_SAFE + ZONE
-          ? { x: touch.clientX, y: touch.clientY }
-          : null;
-    };
-    const onEnd = (event: TouchEvent) => {
-      const start = swipeStart.current;
-      const touch = event.changedTouches[0];
-      swipeStart.current = null;
-      if (!start || !touch) return;
-      const dx = start.x - touch.clientX;
-      const dy = Math.abs(start.y - touch.clientY);
-      if (dx > 50 && dy < 70) setHubOpen(true);
-    };
-    window.addEventListener("touchstart", onStart, { passive: true });
-    window.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      window.removeEventListener("touchstart", onStart);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, []);
 
   const themeMutation = useMutation({
     mutationFn: async (themeId: CifraThemeId) => {
@@ -156,10 +126,21 @@ function AppPage() {
           <p className="text-[11px] text-muted-foreground">Kit completo do músico</p>
           </div>
         </div>
+        <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setHubOpen(true)}
+          aria-label="Abrir extras: programa de afiliados e reclamações"
+        >
+          <Sparkles className="size-4 text-primary" aria-hidden="true" />
+          Extras
+        </Button>
         <Button variant="ghost" size="sm" onClick={signOut}>
           <LogOut className="size-4" aria-hidden="true" />
           Sair
         </Button>
+        </div>
       </header>
 
       <main className="px-4">
@@ -175,12 +156,6 @@ function AppPage() {
         {tab === "metronomo" ? <Metronomo /> : null}
         {tab === "gravador" ? <Gravador /> : null}
       </main>
-
-      {/* Área invisível de gesto: arraste da direita para a esquerda para abrir os Extras */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed right-6 top-1/4 z-40 h-1/2 w-14"
-      />
 
       <Sheet open={hubOpen} onOpenChange={setHubOpen}>
         <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
