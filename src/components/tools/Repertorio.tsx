@@ -160,45 +160,46 @@ export function Repertorio({
         />
       </div>
 
-      <div className="space-y-2 rounded-xl border bg-card p-4">
-        <Label>Importar cifras salvas (TXT)</Label>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.text,.md,.cifra,text/plain"
-          multiple
-          className="hidden"
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            if (files.length) fileImportMutation.mutate(files);
-            event.target.value = "";
-          }}
-        />
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={fileImportMutation.isPending}
-        >
-          {fileImportMutation.isPending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <FileUp className="size-4" aria-hidden="true" />
-          )}
-          Escolher arquivos TXT
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          Traga cifras exportadas do Recifra ou de qualquer app em .txt. Use o nome do arquivo como
-          "Artista - Música" para preencher automaticamente.
-        </p>
-      </div>
-
       <Button variant={showForm ? "outline" : "default"} className="w-full" onClick={() => setShowForm((v) => !v)}>
         <Plus className="size-4" aria-hidden="true" />
         {showForm ? "Fechar formulário" : "Nova música"}
       </Button>
 
       {showForm ? (
+        <>
+        <div className="space-y-2 rounded-xl border bg-card p-4">
+          <Label>Importar cifras salvas (TXT)</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.text,.md,.cifra,text/plain"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              if (files.length) fileImportMutation.mutate(files);
+              event.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={fileImportMutation.isPending}
+          >
+            {fileImportMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FileUp className="size-4" aria-hidden="true" />
+            )}
+            Escolher arquivos TXT
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Traga cifras exportadas do Recifra ou de qualquer app em .txt. Use o nome do arquivo como
+            "Artista - Música" para preencher automaticamente.
+          </p>
+        </div>
         <form
           className="space-y-3 rounded-xl border bg-card p-4"
           onSubmit={(event) => {
