@@ -4,6 +4,14 @@ import { Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NOTES_SHARP } from "@/lib/chords";
 
+const NOTES_FLAT = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 function autoCorrelate(buffer: Float32Array, sampleRate: number) {
   const size = buffer.length;
   let rms = 0;
@@ -41,19 +49,25 @@ export function Afinador() {
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("--");
+  const [altNote, setAltNote] = useState("");
   const [octave, setOctave] = useState<number | null>(null);
   const [cents, setCents] = useState(0);
   const [hasSignal, setHasSignal] = useState(false);
   const refs = useRef<{ ctx?: AudioContext; stream?: MediaStream; frame?: number }>({});
+  const samples = useRef<number[]>([]);
+  const lastUpdate = useRef(0);
 
   const stop = () => {
     if (refs.current.frame) cancelAnimationFrame(refs.current.frame);
     refs.current.stream?.getTracks().forEach((t) => t.stop());
     void refs.current.ctx?.close();
     refs.current = {};
+    samples.current = [];
+    lastUpdate.current = 0;
     setActive(false);
     setHasSignal(false);
     setNote("--");
+    setAltNote("");
     setOctave(null);
     setCents(0);
   };
@@ -76,20 +90,36 @@ export function Afinador() {
       const loop = () => {
         analyser.getFloatTimeDomainData(buffer);
         const frequency = autoCorrelate(buffer, ctx.sampleRate);
+        const now = performance.now();
         if (frequency > 0) {
-          const midi = 69 + 12 * Math.log2(frequency / 440);
-          const rounded = Math.round(midi);
-          setNote(NOTES_SHARP[((rounded % 12) + 12) % 12]);
-          setOctave(Math.floor(rounded / 12) - 1);
-          setCents(Math.round((midi - rounded) * 100));
-          setHasSignal(true);
-        } else {
-          setHasSignal(false);
+          samples.current.push(69 + 12 * Math.log2(frequency / 440));
+          if (samples.current.length > 120) samples.current.shift();
+        }
+
+        // Atualiza a leitura apenas 1x por segundo, usando a mediana das amostras:
+        // evita que qualquer variação mínima faça a nota "pular".
+        if (now - lastUpdate.current >= 1000) {
+          lastUpdate.current = now;
+          if (samples.current.length >= 8) {
+            const midi = median(samples.current);
+            const rounded = Math.round(midi);
+            const index = ((rounded % 12) + 12) % 12;
+            setNote(NOTES_SHARP[index]);
+            setAltNote(NOTES_FLAT[index] === NOTES_SHARP[index] ? "" : NOTES_FLAT[index]);
+            setOctave(Math.floor(rounded / 12) - 1);
+            setCents(Math.round((midi - rounded) * 100));
+            setHasSignal(true);
+          } else {
+            setHasSignal(false);
+          }
+          samples.current = [];
         }
         refs.current.frame = requestAnimationFrame(loop);
       };
 
       refs.current = { ctx, stream };
+      samples.current = [];
+      lastUpdate.current = performance.now();
       refs.current.frame = requestAnimationFrame(loop);
       setActive(true);
     } catch {
@@ -97,7 +127,13 @@ export function Afinador() {
     }
   };
 
-  const inTune = hasSignal && Math.abs(cents) <= 5;
+  const inTune = hasSignal && Math.abs(cents) <= 8;
+  const outOfTune = hasSignal && !inTune;
+  const noteColor = inTune
+    ? "var(--emerald)"
+    : outOfTune
+      ? "var(--destructive)"
+      : "var(--foreground)";
 
   return (
     <div className="space-y-4">
@@ -109,14 +145,21 @@ export function Afinador() {
 
       <div className="rounded-2xl border bg-card p-6 text-center">
         <div className="flex items-end justify-center gap-1">
-          <span
-            className="text-6xl font-extrabold"
-            style={{ color: inTune ? "var(--emerald)" : "var(--foreground)" }}
-          >
+          <span className="text-6xl font-extrabold" style={{ color: noteColor }}>
             {hasSignal ? note : "--"}
           </span>
-          <span className="mb-2 text-sm text-muted-foreground">{octave ?? ""}</span>
+          <span className="mb-2 text-sm text-muted-foreground">
+            {hasSignal && octave !== null ? octave : ""}
+          </span>
         </div>
+        {hasSignal && altNote ? (
+          <p className="text-xs text-muted-foreground">também chamada de {altNote}</p>
+        ) : null}
+        {hasSignal ? (
+          <p className="text-xs text-muted-foreground">
+            {note}m / {note}  •  leitura estabilizada (1x por segundo)
+          </p>
+        ) : null}
         <p className="mt-1 text-sm text-muted-foreground">
           {hasSignal ? `${cents > 0 ? "+" : ""}${cents} cents` : "Toque uma nota"}
         </p>
@@ -126,8 +169,8 @@ export function Afinador() {
           <div
             className="absolute top-[-8px] h-7 w-1 rounded-full transition-[left] duration-100"
             style={{
-              left: `${Math.min(100, Math.max(0, 50 + cents / 1))}%`,
-              backgroundColor: inTune ? "var(--emerald)" : "var(--tom)",
+              left: `${Math.min(100, Math.max(0, 50 + cents))}%`,
+              backgroundColor: inTune ? "var(--emerald)" : "var(--destructive)",
             }}
           />
         </div>
@@ -136,10 +179,12 @@ export function Afinador() {
           <p className="mt-4 font-semibold" style={{ color: "var(--emerald)" }}>
             Afinado
           </p>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">
-            {hasSignal ? (cents < 0 ? "Muito grave" : "Muito agudo") : " "}
+        ) : outOfTune ? (
+          <p className="mt-4 font-semibold" style={{ color: "var(--destructive)" }}>
+            Desafinado — {cents < 0 ? "está grave, suba um pouco" : "está agudo, desça um pouco"}
           </p>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">Toque uma nota</p>
         )}
       </div>
     </div>
