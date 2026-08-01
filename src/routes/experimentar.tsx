@@ -123,12 +123,3 @@ function DemoPage() {
     </div>
   );
 }
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/experimentar')({
-  component: RouteComponent,
-})
-
-function RouteComponent() {
-  return <div>Hello "/experimentar"!</div>
-}
