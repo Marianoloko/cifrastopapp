@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronLeft,
   Gift,
   Headphones,
   LifeBuoy,
@@ -79,11 +78,16 @@ function AppPage() {
   const { data, status, remainingMs } = useAccess();
 
   useEffect(() => {
+    const EDGE_SAFE = 24; // afasta da borda para não disparar o "voltar" do celular
+    const ZONE = 56; // largura da faixa sensível
     const onStart = (event: TouchEvent) => {
       const touch = event.touches[0];
       if (!touch) return;
+      const fromRight = window.innerWidth - touch.clientX;
       swipeStart.current =
-        touch.clientX > window.innerWidth - 40 ? { x: touch.clientX, y: touch.clientY } : null;
+        fromRight > EDGE_SAFE && fromRight < EDGE_SAFE + ZONE
+          ? { x: touch.clientX, y: touch.clientY }
+          : null;
     };
     const onEnd = (event: TouchEvent) => {
       const start = swipeStart.current;
@@ -92,7 +96,7 @@ function AppPage() {
       if (!start || !touch) return;
       const dx = start.x - touch.clientX;
       const dy = Math.abs(start.y - touch.clientY);
-      if (dx > 60 && dy < 60) setHubOpen(true);
+      if (dx > 50 && dy < 70) setHubOpen(true);
     };
     window.addEventListener("touchstart", onStart, { passive: true });
     window.addEventListener("touchend", onEnd, { passive: true });
@@ -172,14 +176,11 @@ function AppPage() {
         {tab === "gravador" ? <Gravador /> : null}
       </main>
 
-      <button
-        onClick={() => setHubOpen(true)}
-        aria-label="Abrir hub de extras"
-        className="fixed right-0 top-1/2 z-40 flex -translate-y-1/2 items-center gap-1 rounded-l-full border border-r-0 border-primary/30 bg-primary/95 py-3 pl-3 pr-2 text-primary-foreground shadow-lg backdrop-blur transition-transform active:translate-x-1"
-      >
-        <ChevronLeft className="size-4" aria-hidden="true" />
-        <Sparkles className="size-4" aria-hidden="true" />
-      </button>
+      {/* Área invisível de gesto: arraste da direita para a esquerda para abrir os Extras */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed right-6 top-1/4 z-40 h-1/2 w-14"
+      />
 
       <Sheet open={hubOpen} onOpenChange={setHubOpen}>
         <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
