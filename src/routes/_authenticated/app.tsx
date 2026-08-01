@@ -1,7 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Gift, Headphones, LifeBuoy, ListMusic, LogOut, Mic, Music2, Timer } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  Gift,
+  Headphones,
+  LifeBuoy,
+  ListMusic,
+  LogOut,
+  Mic,
+  Music2,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 
 import { Paywall } from "@/components/PlanGrid";
 import { TrialBanner } from "@/components/TrialBanner";
@@ -13,6 +24,7 @@ import { Repertorio } from "@/components/tools/Repertorio";
 import { Retorno } from "@/components/tools/Retorno";
 import { Suporte } from "@/components/tools/Suporte";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAccess } from "@/hooks/useAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/access";
@@ -47,17 +59,48 @@ const TABS = [
   { id: "afinador", label: "Afinador", icon: Music2 },
   { id: "metronomo", label: "Metrônomo", icon: Timer },
   { id: "gravador", label: "Gravador", icon: Mic },
-  { id: "indicacoes", label: "Indique", icon: Gift },
-  { id: "suporte", label: "Suporte", icon: LifeBuoy },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+type HubId = "indicacoes" | "suporte";
+
+const HUB_ITEMS = [
+  { id: "indicacoes", label: "Indique e Ganhe", icon: Gift },
+  { id: "suporte", label: "Suporte", icon: LifeBuoy },
+] as const;
 
 function AppPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("repertorio");
+  const [hubOpen, setHubOpen] = useState(false);
+  const [hubTab, setHubTab] = useState<HubId>("indicacoes");
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const { data, status, remainingMs } = useAccess();
+
+  useEffect(() => {
+    const onStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      swipeStart.current =
+        touch.clientX > window.innerWidth - 40 ? { x: touch.clientX, y: touch.clientY } : null;
+    };
+    const onEnd = (event: TouchEvent) => {
+      const start = swipeStart.current;
+      const touch = event.changedTouches[0];
+      swipeStart.current = null;
+      if (!start || !touch) return;
+      const dx = start.x - touch.clientX;
+      const dy = Math.abs(start.y - touch.clientY);
+      if (dx > 60 && dy < 60) setHubOpen(true);
+    };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, []);
 
   const themeMutation = useMutation({
     mutationFn: async (themeId: CifraThemeId) => {
@@ -127,11 +170,54 @@ function AppPage() {
         {tab === "afinador" ? <Afinador /> : null}
         {tab === "metronomo" ? <Metronomo /> : null}
         {tab === "gravador" ? <Gravador /> : null}
-        {tab === "indicacoes" ? <Indicacoes /> : null}
-        {tab === "suporte" ? <Suporte /> : null}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-7 border-t bg-card">
+      <button
+        onClick={() => setHubOpen(true)}
+        aria-label="Abrir hub de extras"
+        className="fixed right-0 top-1/2 z-40 flex -translate-y-1/2 items-center gap-1 rounded-l-full border border-r-0 border-primary/30 bg-primary/95 py-3 pl-3 pr-2 text-primary-foreground shadow-lg backdrop-blur transition-transform active:translate-x-1"
+      >
+        <ChevronLeft className="size-4" aria-hidden="true" />
+        <Sparkles className="size-4" aria-hidden="true" />
+      </button>
+
+      <Sheet open={hubOpen} onOpenChange={setHubOpen}>
+        <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
+          <SheetHeader className="border-b px-4 py-4 text-left">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="size-4 text-primary" aria-hidden="true" />
+              Extras
+            </SheetTitle>
+            <SheetDescription>
+              Puxe a tela da direita para a esquerda a qualquer momento para abrir este hub.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="grid grid-cols-2 gap-2 border-b p-3">
+            {HUB_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setHubTab(item.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+                  hubTab === item.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                <item.icon className="size-4" aria-hidden="true" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="px-4 pb-8">
+            {hubTab === "indicacoes" ? <Indicacoes /> : <Suporte />}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t bg-card">
         {TABS.map((item) => (
           <button
             key={item.id}
