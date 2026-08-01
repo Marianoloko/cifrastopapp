@@ -1,7 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Headphones, ListMusic, Mic, Music2, Timer } from "lucide-react";
 
-import { PlanGrid } from "@/components/PlanGrid";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
 
@@ -62,9 +61,14 @@ function Index() {
             Repertório sincronizado na nuvem, retorno de áudio ao vivo, afinador, metrônomo e
             gravador. Tudo no seu celular, pronto para o palco e o ensaio.
           </p>
-          <Button asChild size="lg" className="mt-6">
-            <Link to="/auth">Criar Conta e Testar Grátis por 4 Horas</Link>
-          </Button>
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <Button asChild size="lg">
+              <Link to="/auth">Criar Conta e Testar Grátis por 4 Horas</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/experimentar">Ver o app por dentro</Link>
+            </Button>
+          </div>
         </section>
 
         <section className="px-4 py-8">
@@ -80,15 +84,6 @@ function Index() {
           </div>
         </section>
 
-        <section className="px-4 py-8">
-          <h2 className="text-center text-xl font-bold text-foreground">Planos</h2>
-          <p className="mt-1 text-center text-sm text-muted-foreground">
-            Assine diretamente pelo WhatsApp e libere seu acesso instantaneamente.
-          </p>
-          <div className="mx-auto mt-6 max-w-5xl">
-            <PlanGrid />
-          </div>
-        </section>
       </main>
 
       <footer className="border-t px-4 py-6 text-center text-xs text-muted-foreground">
