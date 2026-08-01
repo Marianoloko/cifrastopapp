@@ -63,10 +63,10 @@ function Index() {
           </p>
           <div className="mt-6 flex flex-col items-center gap-2">
             <Button asChild size="lg">
-              <Link to="/auth">Criar Conta e Testar Grátis por 4 Horas</Link>
+              <Link to="/experimentar">Entrar no App e Explorar Tudo</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/experimentar">Ver o app por dentro</Link>
+              <Link to="/auth">Já tenho conta / criar conta</Link>
             </Button>
           </div>
         </section>
