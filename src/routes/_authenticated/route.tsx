@@ -23,8 +23,12 @@ function AuthenticatedLayout() {
       if (cancelled) return;
 
       if (!session) {
-        const pathname = window.location.pathname === "/admin" ? "/admin" : "/app";
-        void navigate({ to: "/auth", search: { redirect: pathname }, replace: true });
+        if (window.location.pathname === "/admin") {
+          void navigate({ to: "/auth", search: { redirect: "/admin" }, replace: true });
+        } else {
+          // Sem conta: mostra o app em modo demonstração; o login só é pedido ao usar uma ferramenta.
+          void navigate({ to: "/experimentar", replace: true });
+        }
         return;
       }
 
