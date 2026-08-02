@@ -26,12 +26,22 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 function AuthPage() {
   const search = Route.useSearch();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [referralCode, setReferralCode] = useState(search.ref ?? "");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(false);
@@ -97,12 +107,18 @@ function AuthPage() {
 
     try {
       if (mode === "signup") {
+        const phoneDigits = phone.replace(/\D/g, "");
+        if (phoneDigits.length < 10) {
+          setErrorMsg("Informe um WhatsApp válido com DDD (ex.: (98) 98715-0431).");
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/app`,
-            data: { full_name: fullName },
+            data: { full_name: fullName, phone: phoneDigits },
           },
         });
 
@@ -116,6 +132,10 @@ function AuthPage() {
         }
 
         if (data.session) {
+          await supabase
+            .from("profiles")
+            .update({ phone: phoneDigits })
+            .eq("id", data.session.user.id);
           await applyReferral();
           setRedirecting(true);
           await navigate({ to: destination, replace: true });
@@ -213,6 +233,25 @@ function AuthPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                 />
+              </div>
+            )}
+
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="phone">WhatsApp (com DDD)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="(98) 98715-0431"
+                  value={phone}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                  autoComplete="tel"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usamos seu WhatsApp só para suporte e avisos da sua conta.
+                </p>
               </div>
             )}
 

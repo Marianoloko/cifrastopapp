@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Ban, ChevronDown, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { Ban, ChevronDown, Music2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import {
   adminDeleteUser,
+  adminListUserSongs,
   adminListUsers,
   adminSetAccess,
   adminSetBan,
@@ -28,6 +29,60 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString("pt-BR");
 }
 
+function UserSongs({ userId }: { userId: string }) {
+  const listSongs = useServerFn(adminListUserSongs);
+  const [openSong, setOpenSong] = useState<string | null>(null);
+  const songsQuery = useQuery({
+    queryKey: ["admin-user-songs", userId],
+    queryFn: () => listSongs({ data: { userId } }),
+  });
+
+  if (songsQuery.isLoading) {
+    return <p className="text-sm text-muted-foreground">Carregando músicas salvas…</p>;
+  }
+  if (songsQuery.isError) {
+    return <p className="text-sm text-destructive">Não consegui carregar as músicas.</p>;
+  }
+  const songs = songsQuery.data ?? [];
+  if (songs.length === 0) {
+    return <p className="text-sm text-muted-foreground">Este usuário ainda não salvou músicas.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {songs.map((song) => {
+        const open = openSong === song.id;
+        return (
+          <div key={song.id} className="rounded-lg border bg-muted/30">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 p-2 text-left"
+              onClick={() => setOpenSong(open ? null : song.id)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">{song.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {song.artist || "Sem artista"} · Tom {song.key || "—"} · {song.capo || "sem capo"} ·
+                  salva em {formatDate(song.created_at)}
+                </span>
+              </span>
+              <ChevronDown
+                className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            {open ? (
+              <pre className="max-h-72 overflow-auto whitespace-pre-wrap border-t p-2 font-mono text-xs">
+                {song.body || "(cifra vazia)"}
+              </pre>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function UsersPanel() {
   const queryClient = useQueryClient();
   const listUsers = useServerFn(adminListUsers);
@@ -37,6 +92,7 @@ export function UsersPanel() {
 
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [songsOpenId, setSongsOpenId] = useState<string | null>(null);
   const [daysById, setDaysById] = useState<Record<string, string>>({});
 
   const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
@@ -185,6 +241,22 @@ export function UsersPanel() {
                       <dd>{formatDate(user.banned_at)}</dd>
                     </div>
                   </dl>
+
+                  <div className="space-y-2 rounded-lg border p-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setSongsOpenId(songsOpenId === user.id ? null : user.id)
+                      }
+                    >
+                      <Music2 className="size-4" aria-hidden="true" />
+                      {songsOpenId === user.id
+                        ? "Ocultar músicas salvas"
+                        : `Ver músicas salvas (${user.songs_count})`}
+                    </Button>
+                    {songsOpenId === user.id ? <UserSongs userId={user.id} /> : null}
+                  </div>
 
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="w-28 space-y-1">
