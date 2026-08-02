@@ -11,6 +11,7 @@ import {
   Music2,
   Sparkles,
   Timer,
+  UserCog,
 } from "lucide-react";
 
 import { Paywall } from "@/components/PlanGrid";
@@ -23,11 +24,19 @@ import { Repertorio } from "@/components/tools/Repertorio";
 import { Retorno } from "@/components/tools/Retorno";
 import { Suporte } from "@/components/tools/Suporte";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAccess } from "@/hooks/useAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/access";
 import type { CifraThemeId } from "@/lib/cifra-themes";
+import { USER_MODES, useUserMode } from "@/lib/user-mode";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
 
@@ -75,6 +84,9 @@ function AppPage() {
   const [hubOpen, setHubOpen] = useState(false);
   const [hubTab, setHubTab] = useState<HubId>("indicacoes");
   const { data, status, remainingMs } = useAccess();
+  const { mode, setMode, ready: modeReady } = useUserMode();
+  const [modeOpen, setModeOpen] = useState(false);
+  const activeMode = USER_MODES.find((item) => item.id === mode) ?? null;
 
   const themeMutation = useMutation({
     mutationFn: async (themeId: CifraThemeId) => {
@@ -130,6 +142,15 @@ function AppPage() {
         <Button
           variant="outline"
           size="sm"
+          onClick={() => setModeOpen(true)}
+          aria-label="Escolher modo de uso"
+        >
+          <UserCog className="size-4 text-primary" aria-hidden="true" />
+          {activeMode ? `${activeMode.emoji} ${activeMode.label}` : "Modo"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setHubOpen(true)}
           aria-label="Abrir extras: programa de afiliados e reclamações"
         >
@@ -149,6 +170,7 @@ function AppPage() {
             userId={data.userId}
             themeId={themeId}
             onThemeChange={(id) => themeMutation.mutate(id)}
+            mode={mode ?? "instrumentista"}
           />
         ) : null}
         {tab === "retorno" ? <Retorno /> : null}
@@ -156,6 +178,43 @@ function AppPage() {
         {tab === "metronomo" ? <Metronomo /> : null}
         {tab === "gravador" ? <Gravador /> : null}
       </main>
+
+      <Dialog
+        open={modeOpen || (modeReady && !mode)}
+        onOpenChange={(open) => {
+          if (!open && !mode) setMode("instrumentista");
+          setModeOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Selecione seu modo</DialogTitle>
+            <DialogDescription>
+              Cada modo destaca o que você mais usa. Salvamos sua última escolha.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {USER_MODES.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setMode(item.id);
+                  setModeOpen(false);
+                }}
+                className={cn(
+                  "rounded-xl border p-3 text-left transition-colors",
+                  mode === item.id ? "border-primary bg-primary/10" : "border-border",
+                )}
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {item.emoji} {item.label}
+                </p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={hubOpen} onOpenChange={setHubOpen}>
         <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
