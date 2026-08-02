@@ -292,3 +292,38 @@ export const adminSetAccess = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { until };
   });
+
+export type AdminUserSong = {
+  id: string;
+  title: string;
+  artist: string;
+  key: string;
+  capo: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const adminListUserSongs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ userId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }): Promise<AdminUserSong[]> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: songs, error } = await supabaseAdmin
+      .from("songs")
+      .select("id, title, artist, key, capo, body, created_at, updated_at")
+      .eq("user_id", data.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (songs ?? []).map((song: any) => ({
+      id: song.id,
+      title: song.title ?? "",
+      artist: song.artist ?? "",
+      key: song.key ?? "",
+      capo: song.capo ?? "",
+      body: song.body ?? "",
+      created_at: song.created_at,
+      updated_at: song.updated_at,
+    }));
+  });
