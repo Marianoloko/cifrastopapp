@@ -353,10 +353,6 @@ export function Afinador() {
               : "⬇️ Muito alta — solte a tarraxa (gire para afrouxar a corda)"}
           </p>
         ) : null}
-
-        {false && (
-          <p className="mt-4 text-sm text-muted-foreground">Toque uma nota</p>
-        )}
       </div>
     </div>
   );
