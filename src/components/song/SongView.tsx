@@ -1,19 +1,43 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Contrast,
   Maximize2,
   Minus,
   Pause,
   Play,
   Plus,
   RotateCcw,
+  Sparkles,
+  Type,
 } from "lucide-react";
 
 import { ChordDiagram } from "@/components/song/ChordDiagram";
+import { Gravador } from "@/components/tools/Gravador";
+import { Metronomo } from "@/components/tools/Metronomo";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { CIFRA_THEMES, getCifraTheme, type CifraThemeId } from "@/lib/cifra-themes";
-import { extractChords, isChordLine, transposeText } from "@/lib/chords";
+import {
+  DIAGRAM_INSTRUMENTS,
+  easyVersion,
+  type DiagramInstrument,
+} from "@/lib/chord-instruments";
+import { extractChords, isChordLine, transposeChord, transposeText } from "@/lib/chords";
+import {
+  getSavedDiagramInstrument,
+  getSavedTranspose,
+  saveDiagramInstrument,
+  saveTranspose,
+  type UserModeId,
+} from "@/lib/user-mode";
 import { cn } from "@/lib/utils";
 
 export type Song = {
@@ -25,26 +49,53 @@ export type Song = {
   body: string;
 };
 
+const HIGH_CONTRAST = { container: "#000000", lyric: "#FFFFFF", chord: "#FFD400", section: "#9CA3AF" };
+
 export function SongView({
   song,
   themeId,
   onThemeChange,
   onBack,
+  mode = "instrumentista",
 }: {
   song: Song;
   themeId: CifraThemeId;
   onThemeChange: (id: CifraThemeId) => void;
   onBack: () => void;
+  mode?: UserModeId;
 }) {
   const [semitones, setSemitones] = useState(0);
+  const [askKeep, setAskKeep] = useState(false);
   const [stage, setStage] = useState(false);
+  const [contrast, setContrast] = useState(false);
   const [scrolling, setScrolling] = useState(false);
   const [speed, setSpeed] = useState(3);
+  const [bigLyrics, setBigLyrics] = useState(mode === "cantor");
+  const [hideChords, setHideChords] = useState(false);
+  const [easy, setEasy] = useState(false);
+  const [instrument, setInstrument] = useState<DiagramInstrument>("violao");
+  const [openChord, setOpenChord] = useState<string | null>(null);
   const speedRef = useRef(speed);
   speedRef.current = speed;
 
-  const theme = getCifraTheme(themeId);
-  const text = useMemo(() => transposeText(song.body, semitones), [song.body, semitones]);
+  useEffect(() => {
+    setSemitones(getSavedTranspose(song.id));
+    setInstrument(getSavedDiagramInstrument() as DiagramInstrument);
+  }, [song.id]);
+
+  const baseTheme = getCifraTheme(themeId);
+  const theme = contrast ? { ...baseTheme, ...HIGH_CONTRAST } : baseTheme;
+
+  const originalChords = useMemo(() => extractChords(song.body), [song.body]);
+  const easyInfo = useMemo(
+    () => easyVersion(originalChords, transposeChord),
+    [originalChords],
+  );
+  const effectiveShift = easy ? easyInfo.shift : semitones;
+  const text = useMemo(
+    () => transposeText(song.body, effectiveShift),
+    [song.body, effectiveShift],
+  );
   const chords = useMemo(() => extractChords(text), [text]);
 
   useEffect(() => {
@@ -58,8 +109,17 @@ export function SongView({
     return () => window.cancelAnimationFrame(frame);
   }, [scrolling]);
 
+  const changeTom = (delta: number) => {
+    setEasy(false);
+    setSemitones((value) => value + delta);
+    setAskKeep(true);
+  };
+
+  const showDiagrams = mode !== "cantor" && !hideChords;
+  const showPanel = mode === "voz-som";
+
   return (
-    <div className="space-y-4 pb-24">
+    <div className={cn("space-y-4", showPanel ? "pb-[19rem]" : "pb-24")}>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -97,22 +157,116 @@ export function SongView({
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-muted-foreground">Tom</span>
-            <Button variant="outline" size="icon" onClick={() => setSemitones((v) => v - 1)}>
+            <Button variant="outline" size="icon" onClick={() => changeTom(-1)}>
               <Minus className="size-4" aria-hidden="true" />
               <span className="sr-only">Descer meio tom</span>
             </Button>
             <span className="w-10 text-center font-mono text-sm">
               {semitones > 0 ? `+${semitones}` : semitones}
             </span>
-            <Button variant="outline" size="icon" onClick={() => setSemitones((v) => v + 1)}>
+            <Button variant="outline" size="icon" onClick={() => changeTom(1)}>
               <Plus className="size-4" aria-hidden="true" />
               <span className="sr-only">Subir meio tom</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSemitones(0)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSemitones(0);
+                setEasy(false);
+                saveTranspose(song.id, 0);
+                setAskKeep(false);
+              }}
+            >
               <RotateCcw className="size-4" aria-hidden="true" />
               Original
             </Button>
           </div>
+
+          {askKeep ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-2">
+              <p className="flex-1 text-xs font-medium text-foreground">
+                Quer manter essa alteração de tom sempre que abrir esta música?
+              </p>
+              <Button
+                size="sm"
+                onClick={() => {
+                  saveTranspose(song.id, semitones);
+                  setAskKeep(false);
+                }}
+              >
+                Manter
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setAskKeep(false)}>
+                Só agora
+              </Button>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={bigLyrics ? "default" : "outline"}
+              onClick={() => setBigLyrics((v) => !v)}
+            >
+              <Type className="size-4" aria-hidden="true" />
+              Letra grande
+            </Button>
+            <Button
+              size="sm"
+              variant={hideChords ? "default" : "outline"}
+              onClick={() => setHideChords((v) => !v)}
+            >
+              Só letra
+            </Button>
+            <Button
+              size="sm"
+              variant={contrast ? "default" : "outline"}
+              onClick={() => setContrast((v) => !v)}
+            >
+              <Contrast className="size-4" aria-hidden="true" />
+              Alto contraste
+            </Button>
+            {mode === "iniciante" ? (
+              <Button
+                size="sm"
+                variant={easy ? "default" : "outline"}
+                onClick={() => setEasy((v) => !v)}
+              >
+                <Sparkles className="size-4" aria-hidden="true" />
+                {easy ? "Versão fácil" : "Versão original"}
+              </Button>
+            ) : null}
+          </div>
+
+          {easy ? (
+            <p className="rounded-lg bg-muted p-2 text-xs text-muted-foreground">
+              Versão fácil: acordes sem pestana. Para soar no tom original, ponha o capotraste na{" "}
+              <strong>{easyInfo.capo === 0 ? "casa 0 (sem capo)" : `${easyInfo.capo}ª casa`}</strong>.
+            </p>
+          ) : null}
+
+          {mode !== "cantor" ? (
+            <div className="flex flex-wrap gap-2">
+              {DIAGRAM_INSTRUMENTS.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => {
+                    setInstrument(option.id);
+                    saveDiagramInstrument(option.id);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    option.id === instrument
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
@@ -134,13 +288,18 @@ export function SongView({
             <span className="w-6 text-center text-xs text-muted-foreground">{speed}</span>
           </div>
 
-          {chords.length > 0 ? (
+          {showDiagrams && chords.length > 0 ? (
             <div
               className="flex flex-wrap gap-2 rounded-lg p-2"
               style={{ backgroundColor: theme.container }}
             >
               {chords.map((chord) => (
-                <ChordDiagram key={chord} chord={chord} color={theme.chord} />
+                <ChordDiagram
+                  key={chord}
+                  chord={chord}
+                  color={theme.chord}
+                  instrument={instrument}
+                />
               ))}
             </div>
           ) : null}
@@ -161,31 +320,81 @@ export function SongView({
         <pre
           className={cn(
             "whitespace-pre-wrap font-mono leading-relaxed",
-            stage ? "text-xl" : "text-sm",
+            stage || bigLyrics ? "text-xl" : "text-sm",
           )}
         >
           {text.split("\n").map((line, index) => {
             const isSection = /^\s*\[.*\]\s*$/.test(line);
-            const color = isSection
-              ? theme.section
-              : isChordLine(line)
-                ? theme.chord
-                : theme.lyric;
+            const chordLine = isChordLine(line);
+            if (chordLine && hideChords) return null;
+            const color = isSection ? theme.section : chordLine ? theme.chord : theme.lyric;
             return (
               <span
                 key={index}
                 style={{
                   color,
-                  fontWeight: isSection || isChordLine(line) ? 700 : 400,
+                  fontWeight: isSection || chordLine ? 700 : 400,
                   display: "block",
                 }}
               >
-                {line === "" ? " " : line}
+                {chordLine
+                  ? line.split(/(\s+)/).map((token, tokenIndex) =>
+                      token.trim() ? (
+                        <button
+                          key={tokenIndex}
+                          type="button"
+                          onClick={() => setOpenChord(token)}
+                          className="underline-offset-4 hover:underline"
+                        >
+                          {token}
+                        </button>
+                      ) : (
+                        <span key={tokenIndex}>{token}</span>
+                      ),
+                    )
+                  : line === ""
+                    ? " "
+                    : line}
               </span>
             );
           })}
         </pre>
       </div>
+
+      <Dialog open={openChord !== null} onOpenChange={(open) => !open && setOpenChord(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Acorde {openChord}</DialogTitle>
+            <DialogDescription>Veja como montar em cada instrumento.</DialogDescription>
+          </DialogHeader>
+          {openChord ? (
+            <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted p-3">
+              {DIAGRAM_INSTRUMENTS.map((option) => (
+                <div key={option.id} className="flex flex-col items-center gap-1">
+                  <ChordDiagram
+                    chord={openChord}
+                    color="var(--foreground)"
+                    instrument={option.id}
+                  />
+                  <span className="text-[10px] text-muted-foreground">{option.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {showPanel ? (
+        <div className="fixed bottom-16 left-0 right-0 z-30 max-h-64 overflow-y-auto border-t bg-card px-4 py-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            Painel rápido — metrônomo e gravação
+          </p>
+          <div className="space-y-4">
+            <Metronomo />
+            <Gravador />
+          </div>
+        </div>
+      ) : null}
 
       {stage ? (
         <div className="fixed bottom-20 left-1/2 z-30 -translate-x-1/2">

@@ -345,6 +345,14 @@ export function Afinador() {
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">Toque uma nota</p>
         )}
+
+        {outOfTune ? (
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {displayCents < 0
+              ? "⬆️ Muito baixa — aperte a tarraxa (gire para esticar a corda)"
+              : "⬇️ Muito alta — solte a tarraxa (gire para afrouxar a corda)"}
+          </p>
+        ) : null}
       </div>
     </div>
   );

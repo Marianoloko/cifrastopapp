@@ -3,6 +3,13 @@ import { Headphones, Power } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+
+const PRESETS = [
+  { id: "quente", label: "Voz Quente", gain: 0.7, reverb: 0.2, delay: 0.08, denoise: false },
+  { id: "estudio", label: "Reverb de Estúdio", gain: 0.6, reverb: 0.55, delay: 0.22, denoise: false },
+  { id: "limpo", label: "Atenuação de Ruído", gain: 0.5, reverb: 0.08, delay: 0, denoise: true },
+];
 
 function makeImpulse(ctx: AudioContext, seconds = 2.2, decay = 2.5) {
   const rate = ctx.sampleRate;
@@ -24,6 +31,8 @@ export function Retorno() {
   const [reverb, setReverb] = useState(0.25);
   const [delay, setDelay] = useState(0.15);
   const [level, setLevel] = useState(0);
+  const [preset, setPreset] = useState<string | null>(null);
+  const [denoise, setDenoise] = useState(false);
 
   const refs = useRef<{
     ctx?: AudioContext;
@@ -65,7 +74,7 @@ export function Retorno() {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
-          noiseSuppression: false,
+          noiseSuppression: denoise,
           autoGainControl: false,
         },
       });
@@ -136,6 +145,38 @@ export function Retorno() {
         {active ? "Desligar retorno" : "Ligar retorno"}
       </Button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <div className="rounded-xl border bg-card p-3">
+        <p className="mb-2 text-xs font-semibold text-muted-foreground">Presets de voz</p>
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setPreset(item.id);
+                setGain(item.gain);
+                setReverb(item.reverb);
+                setDelay(item.delay);
+                setDenoise(item.denoise);
+              }}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                preset === item.id
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {denoise ? (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Atenuação de ruído entra ao ligar o retorno novamente.
+          </p>
+        ) : null}
+      </div>
 
       <div className="rounded-xl border bg-card p-4">
         <p className="mb-1 text-xs font-semibold text-muted-foreground">Nível</p>

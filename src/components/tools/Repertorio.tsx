@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { NOTES_SHARP } from "@/lib/chords";
 import type { CifraThemeId } from "@/lib/cifra-themes";
+import type { UserModeId } from "@/lib/user-mode";
 
 const CAPOS = [
   "Sem Capo",
@@ -47,10 +48,12 @@ export function Repertorio({
   userId,
   themeId,
   onThemeChange,
+  mode,
 }: {
   userId: string;
   themeId: CifraThemeId;
   onThemeChange: (id: CifraThemeId) => void;
+  mode?: UserModeId;
 }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -140,6 +143,7 @@ export function Repertorio({
         song={selected}
         themeId={themeId}
         onThemeChange={onThemeChange}
+        mode={mode}
         onBack={() => setSelectedId(null)}
       />
     );
