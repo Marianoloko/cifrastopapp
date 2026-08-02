@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; ref?: string } => ({
     redirect: search.redirect === "/admin" || search.redirect === "/app" ? search.redirect : undefined,
     ref: typeof search.ref === "string" && search.ref.trim() ? search.ref.trim().toUpperCase() : undefined,
   }),
