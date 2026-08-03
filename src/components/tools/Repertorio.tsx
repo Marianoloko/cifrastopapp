@@ -295,6 +295,30 @@ export function Repertorio({
           </div>
           <div className="space-y-1">
             <Label htmlFor="body">Corpo da cifra</Label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="media">Link do áudio/vídeo</Label>
+              <Input
+                id="media"
+                value={form.media_url}
+                placeholder="YouTube, Spotify ou MP3"
+                onChange={(event) => setForm({ ...form, media_url: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bpm">BPM</Label>
+              <Input
+                id="bpm"
+                inputMode="numeric"
+                value={form.bpm}
+                onChange={(event) =>
+                  setForm({ ...form, bpm: event.target.value.replace(/\D/g, "").slice(0, 3) })
+                }
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
             <Textarea
               id="body"
               rows={12}
@@ -314,9 +338,17 @@ export function Repertorio({
         {songsQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando repertório…</p>
         ) : filtered.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Nenhuma música no repertório ainda.
-          </p>
+          <div className="space-y-3 rounded-xl border border-dashed p-6 text-center">
+            <p className="text-sm text-muted-foreground">Nenhuma música no repertório ainda.</p>
+            <Button
+              variant="outline"
+              onClick={() => starterMutation.mutate()}
+              disabled={starterMutation.isPending}
+            >
+              <Sparkles className="size-4" aria-hidden="true" />
+              Adicionar repertório inicial (3 músicas)
+            </Button>
+          </div>
         ) : (
           filtered.map((song) => (
             <div
