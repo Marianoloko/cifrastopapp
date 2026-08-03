@@ -327,3 +327,58 @@ export const adminListUserSongs = createServerFn({ method: "POST" })
       updated_at: song.updated_at,
     }));
   });
+
+export type TrafficStats = {
+  totalVisits: number;
+  visits7d: number;
+  visits30d: number;
+  bySource: { source: string; count: number }[];
+  byPath: { path: string; count: number }[];
+  users: number;
+  songs: number;
+};
+
+export const adminTrafficStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TrafficStats> => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    const since7 = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+    const [eventsResult, usersResult, songsResult] = await Promise.all([
+      supabaseAdmin
+        .from("traffic_events")
+        .select("path, source, created_at")
+        .gte("created_at", since30)
+        .limit(5000),
+      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("songs").select("id", { count: "exact", head: true }),
+    ]);
+
+    const events = (eventsResult.data ?? []) as { path: string; source: string | null; created_at: string }[];
+    const sources = new Map<string, number>();
+    const paths = new Map<string, number>();
+    let visits7d = 0;
+
+    for (const event of events) {
+      const source = event.source || "direto";
+      sources.set(source, (sources.get(source) ?? 0) + 1);
+      paths.set(event.path, (paths.get(event.path) ?? 0) + 1);
+      if (event.created_at >= since7) visits7d += 1;
+    }
+
+    const sortDesc = (map: Map<string, number>) =>
+      [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+    return {
+      totalVisits: events.length,
+      visits7d,
+      visits30d: events.length,
+      bySource: sortDesc(sources).map(([source, count]) => ({ source, count })),
+      byPath: sortDesc(paths).map(([path, count]) => ({ path, count })),
+      users: usersResult.count ?? 0,
+      songs: songsResult.count ?? 0,
+    };
+  });

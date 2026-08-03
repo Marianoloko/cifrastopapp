@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Contrast,
+  Link2,
   Maximize2,
   Minus,
+  Mic2,
   Pause,
   Play,
   Plus,
@@ -13,9 +16,12 @@ import {
 } from "lucide-react";
 
 import { ChordDiagram } from "@/components/song/ChordDiagram";
+import { BandSyncPanel, useBandSync } from "@/components/song/BandSync";
+import { MediaPlayer } from "@/components/song/MediaPlayer";
 import { Gravador } from "@/components/tools/Gravador";
 import { Metronomo } from "@/components/tools/Metronomo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
+import { supabase } from "@/integrations/supabase/client";
 import { CIFRA_THEMES, getCifraTheme, type CifraThemeId } from "@/lib/cifra-themes";
 import {
   DIAGRAM_INSTRUMENTS,
@@ -47,6 +54,8 @@ export type Song = {
   key: string;
   capo: string;
   body: string;
+  media_url?: string | null;
+  bpm?: number | null;
 };
 
 const HIGH_CONTRAST = { container: "#000000", lyric: "#FFFFFF", chord: "#FFD400", section: "#9CA3AF" };
@@ -75,13 +84,32 @@ export function SongView({
   const [easy, setEasy] = useState(false);
   const [instrument, setInstrument] = useState<DiagramInstrument>("violao");
   const [openChord, setOpenChord] = useState<string | null>(null);
+  const [mediaUrl, setMediaUrl] = useState(song.media_url ?? "");
+  const [karaoke, setKaraoke] = useState(false);
   const speedRef = useRef(speed);
   speedRef.current = speed;
 
   useEffect(() => {
     setSemitones(getSavedTranspose(song.id));
     setInstrument(getSavedDiagramInstrument() as DiagramInstrument);
+    setMediaUrl(song.media_url ?? "");
   }, [song.id]);
+
+  const mediaMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const { error } = await supabase
+        .from("songs")
+        .update({ media_url: url || null } as never)
+        .eq("id", song.id);
+      if (error) throw error;
+    },
+  });
+
+  const band = useBandSync((state) => {
+    if (state.songId !== song.id) return;
+    setSemitones(state.semitones);
+    window.scrollTo({ top: state.scrollY });
+  });
 
   const baseTheme = getCifraTheme(themeId);
   const theme = contrast ? { ...baseTheme, ...HIGH_CONTRAST } : baseTheme;
@@ -108,6 +136,14 @@ export function SongView({
     frame = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(frame);
   }, [scrolling]);
+
+  useEffect(() => {
+    if (!band.room || !band.leader) return;
+    const id = window.setInterval(() => {
+      band.broadcast({ songId: song.id, semitones, scrollY: window.scrollY });
+    }, 700);
+    return () => window.clearInterval(id);
+  }, [band, song.id, semitones]);
 
   const changeTom = (delta: number) => {
     setEasy(false);
@@ -288,6 +324,46 @@ export function SongView({
             <span className="w-6 text-center text-xs text-muted-foreground">{speed}</span>
           </div>
 
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <Link2 className="size-4 text-primary" aria-hidden="true" />
+              <p className="text-xs font-bold text-foreground">Áudio ou vídeo da música</p>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={mediaUrl}
+                onChange={(event) => setMediaUrl(event.target.value)}
+                placeholder="Cole o link do YouTube, Spotify ou áudio"
+                className="h-9 text-xs"
+              />
+              <Button size="sm" onClick={() => mediaMutation.mutate(mediaUrl)}>
+                Salvar
+              </Button>
+            </div>
+            <Button
+              size="sm"
+              variant={karaoke ? "default" : "outline"}
+              onClick={() => {
+                setKaraoke((v) => !v);
+                if (!karaoke) setScrolling(true);
+              }}
+            >
+              <Mic2 className="size-4" aria-hidden="true" />
+              Modo Karaokê (rolagem junto com o áudio)
+            </Button>
+          </div>
+
+          <BandSyncPanel
+            room={band.room}
+            leader={band.leader}
+            onJoin={(code) => band.setRoom(code)}
+            onLeave={() => {
+              band.setRoom(null);
+              band.setLeader(false);
+            }}
+            onLeaderChange={band.setLeader}
+          />
+
           {showDiagrams && chords.length > 0 ? (
             <div
               className="flex flex-wrap gap-2 rounded-lg p-2"
@@ -314,12 +390,12 @@ export function SongView({
       </div>
 
       <div
-        className="rounded-xl p-4"
+        className="overflow-x-auto rounded-xl p-4"
         style={{ backgroundColor: theme.container, color: theme.lyric }}
       >
         <pre
           className={cn(
-            "whitespace-pre-wrap font-mono leading-relaxed",
+            "whitespace-pre font-mono leading-relaxed tabular-nums",
             stage || bigLyrics ? "text-xl" : "text-sm",
           )}
         >
@@ -407,6 +483,15 @@ export function SongView({
             Rolagem
           </Button>
         </div>
+      ) : null}
+
+      {mediaUrl ? (
+        <MediaPlayer
+          url={song.media_url ?? mediaUrl}
+          onPlayingChange={(playing) => {
+            if (karaoke) setScrolling(playing);
+          }}
+        />
       ) : null}
     </div>
   );

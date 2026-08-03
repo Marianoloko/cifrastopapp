@@ -117,10 +117,12 @@ export type Database = {
         Row: {
           artist: string
           body: string
+          bpm: number | null
           capo: string
           created_at: string
           id: string
           key: string
+          media_url: string | null
           title: string
           updated_at: string
           user_id: string
@@ -128,10 +130,12 @@ export type Database = {
         Insert: {
           artist?: string
           body?: string
+          bpm?: number | null
           capo?: string
           created_at?: string
           id?: string
           key?: string
+          media_url?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -139,10 +143,12 @@ export type Database = {
         Update: {
           artist?: string
           body?: string
+          bpm?: number | null
           capo?: string
           created_at?: string
           id?: string
           key?: string
+          media_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -173,6 +179,30 @@ export type Database = {
           stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      traffic_events: {
+        Row: {
+          created_at: string
+          id: string
+          path: string
+          source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          path: string
+          source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          path?: string
+          source?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

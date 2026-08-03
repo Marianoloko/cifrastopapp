@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { FileUp, Loader2, Music, Plus, Search, Trash2 } from "lucide-react";
+import { FileUp, Loader2, Music, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { NOTES_SHARP } from "@/lib/chords";
 import type { CifraThemeId } from "@/lib/cifra-themes";
+import { STARTER_SONGS } from "@/lib/starter-songs";
 import type { UserModeId } from "@/lib/user-mode";
 
 const CAPOS = [
@@ -31,7 +32,15 @@ const CAPOS = [
   "7ª casa",
 ];
 
-const emptyForm = { title: "", artist: "", key: "C", capo: "Sem Capo", body: "" };
+const emptyForm = {
+  title: "",
+  artist: "",
+  key: "C",
+  capo: "Sem Capo",
+  body: "",
+  media_url: "",
+  bpm: "",
+};
 
 function cleanCifraText(raw: string) {
   return raw
@@ -76,7 +85,12 @@ export function Repertorio({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("songs").insert({ ...form, user_id: userId });
+      const { error } = await supabase.from("songs").insert({
+        ...form,
+        media_url: form.media_url || null,
+        bpm: form.bpm ? Number(form.bpm) : null,
+        user_id: userId,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -86,6 +100,20 @@ export function Repertorio({
       void queryClient.invalidateQueries({ queryKey: ["songs"] });
     },
     onError: () => toast.error("Não consegui salvar a música."),
+  });
+
+  const starterMutation = useMutation({
+    mutationFn: async () => {
+      const rows = STARTER_SONGS.map((song) => ({ ...song, user_id: userId }));
+      const { error } = await supabase.from("songs").insert(rows as never);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`${count} músicas de exemplo adicionadas!`);
+      void queryClient.invalidateQueries({ queryKey: ["songs"] });
+    },
+    onError: () => toast.error("Não consegui adicionar o repertório inicial."),
   });
 
   const deleteMutation = useMutation({
@@ -267,6 +295,30 @@ export function Repertorio({
           </div>
           <div className="space-y-1">
             <Label htmlFor="body">Corpo da cifra</Label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="media">Link do áudio/vídeo</Label>
+              <Input
+                id="media"
+                value={form.media_url}
+                placeholder="YouTube, Spotify ou MP3"
+                onChange={(event) => setForm({ ...form, media_url: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bpm">BPM</Label>
+              <Input
+                id="bpm"
+                inputMode="numeric"
+                value={form.bpm}
+                onChange={(event) =>
+                  setForm({ ...form, bpm: event.target.value.replace(/\D/g, "").slice(0, 3) })
+                }
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
             <Textarea
               id="body"
               rows={12}
@@ -286,9 +338,17 @@ export function Repertorio({
         {songsQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando repertório…</p>
         ) : filtered.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Nenhuma música no repertório ainda.
-          </p>
+          <div className="space-y-3 rounded-xl border border-dashed p-6 text-center">
+            <p className="text-sm text-muted-foreground">Nenhuma música no repertório ainda.</p>
+            <Button
+              variant="outline"
+              onClick={() => starterMutation.mutate()}
+              disabled={starterMutation.isPending}
+            >
+              <Sparkles className="size-4" aria-hidden="true" />
+              Adicionar repertório inicial (3 músicas)
+            </Button>
+          </div>
         ) : (
           filtered.map((song) => (
             <div

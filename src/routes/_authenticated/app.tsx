@@ -2,7 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  Drum,
   Gift,
+  GraduationCap,
   Headphones,
   LifeBuoy,
   ListMusic,
@@ -16,7 +18,9 @@ import {
 
 import { Paywall } from "@/components/PlanGrid";
 import { TrialBanner } from "@/components/TrialBanner";
+import { Acompanhamento } from "@/components/tools/Acompanhamento";
 import { Afinador } from "@/components/tools/Afinador";
+import { CentralEstudos } from "@/components/tools/CentralEstudos";
 import { Gravador } from "@/components/tools/Gravador";
 import { Indicacoes } from "@/components/tools/Indicacoes";
 import { Metronomo } from "@/components/tools/Metronomo";
@@ -67,14 +71,16 @@ const TABS = [
   { id: "afinador", label: "Afinador", icon: Music2 },
   { id: "metronomo", label: "Metrônomo", icon: Timer },
   { id: "gravador", label: "Gravador", icon: Mic },
+  { id: "estudos", label: "Estudos", icon: GraduationCap },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
-type HubId = "indicacoes" | "suporte";
+type HubId = "indicacoes" | "suporte" | "acompanhamento";
 
 const HUB_ITEMS = [
   { id: "indicacoes", label: "Indique e Ganhe", icon: Gift },
   { id: "suporte", label: "Suporte", icon: LifeBuoy },
+  { id: "acompanhamento", label: "Acompanhamento", icon: Drum },
 ] as const;
 
 function AppPage() {
@@ -177,6 +183,7 @@ function AppPage() {
         {tab === "afinador" ? <Afinador /> : null}
         {tab === "metronomo" ? <Metronomo /> : null}
         {tab === "gravador" ? <Gravador /> : null}
+        {tab === "estudos" ? <CentralEstudos /> : null}
       </main>
 
       <Dialog
@@ -228,7 +235,7 @@ function AppPage() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="grid grid-cols-2 gap-2 border-b p-3">
+          <div className="grid grid-cols-3 gap-2 border-b p-3">
             {HUB_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -247,12 +254,14 @@ function AppPage() {
           </div>
 
           <div className="px-4 pb-8">
-            {hubTab === "indicacoes" ? <Indicacoes /> : <Suporte />}
+            {hubTab === "indicacoes" ? <Indicacoes /> : null}
+            {hubTab === "suporte" ? <Suporte /> : null}
+            {hubTab === "acompanhamento" ? <Acompanhamento /> : null}
           </div>
         </SheetContent>
       </Sheet>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t bg-card">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t bg-card">
         {TABS.map((item) => (
           <button
             key={item.id}
