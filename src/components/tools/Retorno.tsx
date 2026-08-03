@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Headphones, Power } from "lucide-react";
+import * as SliderPrimitive from "@radix-ui/react-slider";
+import { Headphones, Power, Radio } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 const PRESETS = [
@@ -24,8 +24,41 @@ function makeImpulse(ctx: AudioContext, seconds = 2.2, decay = 2.5) {
   return impulse;
 }
 
+function VerticalSlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-2">
+      <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <SliderPrimitive.Root
+        orientation="vertical"
+        value={[value]}
+        min={0}
+        max={1}
+        step={0.01}
+        onValueChange={([v]) => onChange(v)}
+        className="relative flex h-40 w-8 touch-none select-none flex-col items-center justify-center"
+        aria-label={label}
+      >
+        <SliderPrimitive.Track className="relative h-full w-2 grow overflow-hidden rounded-full bg-primary/20">
+          <SliderPrimitive.Range className="absolute w-full bg-primary" />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb className="block size-5 rounded-full border border-primary/50 bg-background shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+      </SliderPrimitive.Root>
+      <span className="font-mono text-xs text-foreground">{Math.round(value * 100)}%</span>
+    </div>
+  );
+}
+
 export function Retorno() {
   const [active, setActive] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gain, setGain] = useState(0.6);
   const [reverb, setReverb] = useState(0.25);
@@ -33,10 +66,13 @@ export function Retorno() {
   const [level, setLevel] = useState(0);
   const [preset, setPreset] = useState<string | null>(null);
   const [denoise, setDenoise] = useState(false);
+  const [silentRehearsal, setSilentRehearsal] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [lineDeviceId, setLineDeviceId] = useState<string>("");
 
   const refs = useRef<{
     ctx?: AudioContext;
-    stream?: MediaStream;
+    streams?: MediaStream[];
     gain?: GainNode;
     wet?: GainNode;
     dry?: GainNode;
@@ -59,7 +95,7 @@ export function Retorno() {
   const stop = () => {
     const r = refs.current;
     if (r.frame) cancelAnimationFrame(r.frame);
-    r.stream?.getTracks().forEach((t) => t.stop());
+    r.streams?.forEach((stream) => stream.getTracks().forEach((track) => track.stop()));
     void r.ctx?.close();
     refs.current = {};
     setActive(false);
@@ -68,18 +104,49 @@ export function Retorno() {
 
   useEffect(() => () => stop(), []);
 
+  const loadDevices = async () => {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      setDevices(all.filter((device) => device.kind === "audioinput"));
+    } catch {
+      setDevices([]);
+    }
+  };
+
   const start = async () => {
     setError(null);
+    setStarting(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         audio: {
           echoCancellation: false,
           noiseSuppression: denoise,
           autoGainControl: false,
         },
-      });
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const streams = [stream];
+
       const ctx = new AudioContext();
-      const source = ctx.createMediaStreamSource(stream);
+      const inputMix = ctx.createGain();
+      ctx.createMediaStreamSource(stream).connect(inputMix);
+
+      if (silentRehearsal && lineDeviceId) {
+        try {
+          const lineStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: { exact: lineDeviceId },
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+          });
+          streams.push(lineStream);
+          ctx.createMediaStreamSource(lineStream).connect(inputMix);
+        } catch {
+          setError("Não consegui abrir a entrada de instrumento escolhida.");
+        }
+      }
 
       const gainNode = ctx.createGain();
       gainNode.gain.value = gain;
@@ -101,7 +168,7 @@ export function Retorno() {
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 1024;
 
-      source.connect(gainNode);
+      inputMix.connect(gainNode);
       gainNode.connect(dry);
       gainNode.connect(convolver);
       convolver.connect(wet);
@@ -125,90 +192,123 @@ export function Retorno() {
         refs.current.frame = requestAnimationFrame(loop);
       };
 
-      refs.current = { ctx, stream, gain: gainNode, wet, dry, delayGain, analyser };
+      refs.current = { ctx, streams, gain: gainNode, wet, dry, delayGain, analyser };
       refs.current.frame = requestAnimationFrame(loop);
       setActive(true);
+      void loadDevices();
     } catch {
       setError("Não foi possível acessar o microfone.");
+    } finally {
+      setStarting(false);
     }
   };
 
+  const percent = Math.min(100, level * 140);
+  const meterColor =
+    percent > 85 ? "bg-destructive" : percent > 60 ? "bg-amber-400" : "bg-emerald";
+
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-xl border border-primary/40 bg-amber-soft p-3 text-sm text-accent-foreground">
-        <Headphones className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <p className="font-medium">Use fones de ouvido para evitar microfonia.</p>
-      </div>
-
-      <Button className="w-full" variant={active ? "destructive" : "default"} onClick={active ? stop : start}>
-        <Power className="size-4" aria-hidden="true" />
-        {active ? "Desligar retorno" : "Ligar retorno"}
-      </Button>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-      <div className="rounded-xl border bg-card p-3">
-        <p className="mb-2 text-xs font-semibold text-muted-foreground">Presets de voz</p>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                setPreset(item.id);
-                setGain(item.gain);
-                setReverb(item.reverb);
-                setDelay(item.delay);
-                setDenoise(item.denoise);
-              }}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                preset === item.id
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        {denoise ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Atenuação de ruído entra ao ligar o retorno novamente.
+      {!active ? (
+        <div className="space-y-3">
+          <Button className="h-14 w-full text-base font-semibold" onClick={start} disabled={starting}>
+            <Headphones className="size-5" aria-hidden="true" />
+            Ativar Retorno de Áudio ao Vivo
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Use fones de ouvido para evitar microfonia.
           </p>
-        ) : null}
-      </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <p className="mb-1 text-xs font-semibold text-muted-foreground">Nível</p>
-        <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-emerald transition-[width] duration-75"
-            style={{ width: `${Math.min(100, level * 140)}%` }}
-          />
+          <button
+            type="button"
+            onClick={() => {
+              setSilentRehearsal((v) => !v);
+              void loadDevices();
+            }}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-xl border p-3 text-left text-xs transition-colors",
+              silentRehearsal ? "border-primary bg-primary/10" : "border-border text-muted-foreground",
+            )}
+          >
+            <Radio className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              <strong className="block text-foreground">Modo Ensaio Silencioso</strong>
+              Mistura microfone + entrada de instrumento direto no seu fone.
+            </span>
+          </button>
+          {silentRehearsal ? (
+            <select
+              value={lineDeviceId}
+              onChange={(event) => setLineDeviceId(event.target.value)}
+              className="w-full rounded-lg border bg-card p-2 text-xs text-foreground"
+              aria-label="Entrada de instrumento"
+            >
+              <option value="">Escolher entrada de instrumento…</option>
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || "Entrada de áudio"}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
-      </div>
-
-      <div className="space-y-4 rounded-xl border bg-card p-4">
-        {[
-          { label: "Ganho", value: gain, set: setGain },
-          { label: "Reverb", value: reverb, set: setReverb },
-          { label: "Delay", value: delay, set: setDelay },
-        ].map((control) => (
-          <div key={control.label}>
-            <div className="mb-2 flex justify-between text-xs font-semibold text-muted-foreground">
-              <span>{control.label}</span>
-              <span>{Math.round(control.value * 100)}%</span>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-top-2 space-y-4 duration-300">
+          <div className="rounded-xl border bg-card p-4">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">Nível de entrada</p>
+            <div className="h-4 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn("h-full transition-[width] duration-75", meterColor)}
+                style={{ width: `${percent}%` }}
+              />
             </div>
-            <Slider
-              value={[control.value]}
-              min={0}
-              max={1}
-              step={0.01}
-              onValueChange={([v]) => control.set(v)}
-            />
           </div>
-        ))}
-      </div>
+
+          <div className="flex gap-4 rounded-xl border bg-card p-4">
+            <VerticalSlider label="Ganho" value={gain} onChange={setGain} />
+            <VerticalSlider label="Reverb" value={reverb} onChange={setReverb} />
+            <VerticalSlider label="Delay" value={delay} onChange={setDelay} />
+          </div>
+
+          <div className="rounded-xl border bg-card p-3">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">Presets de voz</p>
+            <div className="flex flex-wrap gap-2">
+              {PRESETS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setPreset(item.id);
+                    setGain(item.gain);
+                    setReverb(item.reverb);
+                    setDelay(item.delay);
+                    setDenoise(item.denoise);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                    preset === item.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {denoise ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Atenuação de ruído entra ao ligar o retorno novamente.
+              </p>
+            ) : null}
+          </div>
+
+          <Button className="h-12 w-full text-base font-semibold" variant="destructive" onClick={stop}>
+            <Power className="size-5" aria-hidden="true" />
+            Desligar Retorno
+          </Button>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </div>
+      )}
     </div>
   );
 }
