@@ -390,12 +390,12 @@ export function SongView({
       </div>
 
       <div
-        className="rounded-xl p-4"
+        className="overflow-x-auto rounded-xl p-4"
         style={{ backgroundColor: theme.container, color: theme.lyric }}
       >
         <pre
           className={cn(
-            "whitespace-pre-wrap font-mono leading-relaxed",
+            "whitespace-pre font-mono leading-relaxed tabular-nums",
             stage || bigLyrics ? "text-xl" : "text-sm",
           )}
         >
