@@ -484,6 +484,15 @@ export function SongView({
           </Button>
         </div>
       ) : null}
+
+      {mediaUrl ? (
+        <MediaPlayer
+          url={song.media_url ?? mediaUrl}
+          onPlayingChange={(playing) => {
+            if (karaoke) setScrolling(playing);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
