@@ -398,7 +398,15 @@ export function SongView({
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
+          {scrolling ? (
+            <Pause className="size-4" aria-hidden="true" />
+          ) : (
+            <Play className="size-4" aria-hidden="true" />
+          )}
+          Rolagem
+        </Button>
         <Button variant={stage ? "default" : "outline"} size="sm" onClick={() => setStage((v) => !v)}>
           <Maximize2 className="size-4" aria-hidden="true" />
           Modo Palco
