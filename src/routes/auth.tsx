@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,8 @@ function formatPhone(value: string) {
 
 function AuthPage() {
   const search = Route.useSearch();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -98,6 +100,28 @@ function AuthPage() {
   }, [destination, navigate]);
 
   const handleLogin = async (e: FormEvent) => {
+
+    return handleSubmit(e);
+  };
+
+  const handleGoogle = async () => {
+    if (googleLoading || loading || redirecting) return;
+    setGoogleLoading(true);
+    setErrorMsg(null);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      setErrorMsg("Não consegui entrar com o Google. Tente novamente.");
+      setGoogleLoading(false);
+      return;
+    }
+    if (result.redirected) return;
+    setRedirecting(true);
+    await navigate({ to: destination, replace: true });
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading || redirecting) return;
 
