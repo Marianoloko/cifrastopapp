@@ -158,6 +158,9 @@ export type Database = {
       subscriptions: {
         Row: {
           current_period_end: string | null
+          first_paid_at: string | null
+          paid_confirmed: boolean
+          paid_months: number
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -166,6 +169,9 @@ export type Database = {
         }
         Insert: {
           current_period_end?: string | null
+          first_paid_at?: string | null
+          paid_confirmed?: boolean
+          paid_months?: number
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -174,6 +180,9 @@ export type Database = {
         }
         Update: {
           current_period_end?: string | null
+          first_paid_at?: string | null
+          paid_confirmed?: boolean
+          paid_months?: number
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
