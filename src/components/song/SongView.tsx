@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  ChevronDown,
   Contrast,
   Link2,
   Maximize2,
@@ -11,6 +12,7 @@ import {
   Play,
   Plus,
   RotateCcw,
+  Settings2,
   Sparkles,
   Type,
 } from "lucide-react";
@@ -86,6 +88,7 @@ export function SongView({
   const [openChord, setOpenChord] = useState<string | null>(null);
   const [mediaUrl, setMediaUrl] = useState(song.media_url ?? "");
   const [karaoke, setKaraoke] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const speedRef = useRef(speed);
   speedRef.current = speed;
 
@@ -170,6 +173,24 @@ export function SongView({
       </div>
 
       {!stage ? (
+        <button
+          type="button"
+          onClick={() => setShowSettings((v) => !v)}
+          aria-expanded={showSettings}
+          className="flex w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-card-foreground"
+        >
+          <span className="flex items-center gap-2">
+            <Settings2 className="size-4 text-primary" aria-hidden="true" />
+            Configurações / Opções
+          </span>
+          <ChevronDown
+            className={cn("size-4 transition-transform", showSettings && "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+      ) : null}
+
+      {!stage && showSettings ? (
         <div className="space-y-3 rounded-xl border bg-card p-3">
           <div>
             <p className="mb-2 text-xs font-semibold text-muted-foreground">Modelo visual</p>
@@ -363,26 +384,29 @@ export function SongView({
             }}
             onLeaderChange={band.setLeader}
           />
-
-          {showDiagrams && chords.length > 0 ? (
-            <div
-              className="flex flex-wrap gap-2 rounded-lg p-2"
-              style={{ backgroundColor: theme.container }}
-            >
-              {chords.map((chord) => (
-                <ChordDiagram
-                  key={chord}
-                  chord={chord}
-                  color={theme.chord}
-                  instrument={instrument}
-                />
-              ))}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      {!stage && showDiagrams && chords.length > 0 ? (
+        <div
+          className="flex flex-wrap gap-2 rounded-lg p-2"
+          style={{ backgroundColor: theme.container }}
+        >
+          {chords.map((chord) => (
+            <ChordDiagram key={chord} chord={chord} color={theme.chord} instrument={instrument} />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
+          {scrolling ? (
+            <Pause className="size-4" aria-hidden="true" />
+          ) : (
+            <Play className="size-4" aria-hidden="true" />
+          )}
+          Rolagem
+        </Button>
         <Button variant={stage ? "default" : "outline"} size="sm" onClick={() => setStage((v) => !v)}>
           <Maximize2 className="size-4" aria-hidden="true" />
           Modo Palco

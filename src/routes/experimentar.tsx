@@ -6,6 +6,9 @@ import { Afinador } from "@/components/tools/Afinador";
 import { Gravador } from "@/components/tools/Gravador";
 import { Metronomo } from "@/components/tools/Metronomo";
 import { Retorno } from "@/components/tools/Retorno";
+import { SongView, type Song } from "@/components/song/SongView";
+import { STARTER_SONGS } from "@/lib/starter-songs";
+import type { CifraThemeId } from "@/lib/cifra-themes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
@@ -41,9 +44,22 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+const DEMO_SONGS: Song[] = STARTER_SONGS.map((song, index) => ({
+  id: `demo-${index}`,
+  title: song.title,
+  artist: song.artist,
+  key: song.key,
+  capo: song.capo,
+  body: song.body,
+  media_url: song.media_url,
+  bpm: song.bpm,
+}));
+
 function DemoPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<TabId>("afinador");
+  const [tab, setTab] = useState<TabId>("repertorio");
+  const [theme, setTheme] = useState<CifraThemeId>("cifraclub");
+  const [openSong, setOpenSong] = useState<Song | null>(null);
 
   const goRegister = () => navigate({ to: "/auth", search: { redirect: "/app" } });
 
@@ -70,21 +86,49 @@ function DemoPage() {
       </header>
 
       <main className="px-4">
+        {tab === "repertorio" ? (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs font-medium text-foreground">
+              Você está testando a versão grátis. Assine para liberar o catálogo completo e todas as
+              ferramentas!
+            </div>
+
+            {openSong ? (
+              <SongView
+                song={openSong}
+                themeId={theme}
+                onThemeChange={setTheme}
+                onBack={() => setOpenSong(null)}
+              />
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-bold text-foreground">Músicas de demonstração</p>
+                {DEMO_SONGS.map((song) => (
+                  <button
+                    key={song.id}
+                    type="button"
+                    onClick={() => setOpenSong(song)}
+                    className="flex w-full flex-col items-start rounded-xl border bg-card p-3 text-left"
+                  >
+                    <span className="text-sm font-bold text-card-foreground">{song.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {song.artist} · Tom {song.key} · vídeo + karaokê
+                    </span>
+                  </button>
+                ))}
+                <Button className="w-full" onClick={goRegister}>
+                  Criar conta grátis e liberar tudo
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="relative">
           <div
             className="pointer-events-none select-none opacity-90"
             aria-hidden="true"
             inert={"" as unknown as boolean}
           >
-            {tab === "repertorio" ? (
-              <div className="space-y-3 rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-                <p className="font-bold text-card-foreground">Seu repertório na nuvem</p>
-                <p>
-                  Cifras salvas com transposição de tom, temas de leitura e importação de arquivos
-                  TXT. Disponível assim que você criar sua conta.
-                </p>
-              </div>
-            ) : null}
             {tab === "retorno" ? <Retorno /> : null}
             {tab === "afinador" ? <Afinador /> : null}
             {tab === "metronomo" ? <Metronomo /> : null}
@@ -103,6 +147,7 @@ function DemoPage() {
             </span>
           </button>
         </div>
+        )}
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card/95 backdrop-blur">
