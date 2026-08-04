@@ -3,8 +3,11 @@ import { useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Contrast,
   Link2,
+  ListMusic,
   Maximize2,
   Minus,
   Mic2,
@@ -32,6 +35,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { CIFRA_THEMES, getCifraTheme, type CifraThemeId } from "@/lib/cifra-themes";
 import {
@@ -62,18 +72,24 @@ export type Song = {
 
 const HIGH_CONTRAST = { container: "#000000", lyric: "#FFFFFF", chord: "#FFD400", section: "#9CA3AF" };
 
+export type PlaylistItem = { id: string; title: string; artist?: string };
+
 export function SongView({
   song,
   themeId,
   onThemeChange,
   onBack,
   mode = "instrumentista",
+  playlist = [],
+  onSelectSong,
 }: {
   song: Song;
   themeId: CifraThemeId;
   onThemeChange: (id: CifraThemeId) => void;
   onBack: () => void;
   mode?: UserModeId;
+  playlist?: PlaylistItem[];
+  onSelectSong?: (id: string) => void;
 }) {
   const [semitones, setSemitones] = useState(0);
   const [askKeep, setAskKeep] = useState(false);
@@ -157,6 +173,16 @@ export function SongView({
   const showDiagrams = mode !== "cantor" && !hideChords;
   const showPanel = mode === "voz-som";
 
+  const index = playlist.findIndex((item) => item.id === song.id);
+  const canNavigate = Boolean(onSelectSong) && playlist.length > 1 && index >= 0;
+  const goTo = (target: number) => {
+    if (!onSelectSong || playlist.length === 0) return;
+    const next = (target + playlist.length) % playlist.length;
+    onSelectSong(playlist[next].id);
+    window.scrollTo({ top: 0 });
+    setScrolling(false);
+  };
+
   return (
     <div className={cn("space-y-4", showPanel ? "pb-[19rem]" : "pb-24")}>
       <div className="flex items-center gap-2">
@@ -164,13 +190,67 @@ export function SongView({
           <ArrowLeft className="size-4" aria-hidden="true" />
           Voltar
         </Button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-bold text-foreground">{song.title}</h2>
           <p className="truncate text-xs text-muted-foreground">
             {song.artist || "Sem artista"} · Tom {song.key} · {song.capo}
           </p>
         </div>
       </div>
+
+      {canNavigate ? (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => goTo(index - 1)}
+            aria-label="Música anterior"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Anterior
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" aria-label="Abrir lista do repertório">
+                <ListMusic className="size-4" aria-hidden="true" />
+                {index + 1}/{playlist.length}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 w-64 overflow-y-auto">
+              <DropdownMenuLabel>Trocar de música</DropdownMenuLabel>
+              {playlist.map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onSelect={() => {
+                    onSelectSong?.(item.id);
+                    window.scrollTo({ top: 0 });
+                    setScrolling(false);
+                  }}
+                  className={cn("flex-col items-start gap-0", item.id === song.id && "bg-accent")}
+                >
+                  <span className="w-full truncate text-sm font-medium">{item.title}</span>
+                  {item.artist ? (
+                    <span className="w-full truncate text-xs text-muted-foreground">
+                      {item.artist}
+                    </span>
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => goTo(index + 1)}
+            aria-label="Próxima música"
+          >
+            Próxima
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
 
       {!stage ? (
         <button
