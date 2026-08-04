@@ -136,7 +136,9 @@ export function Indicacoes() {
             Painel de Afiliados
           </CardTitle>
           <CardDescription>
-            100% de comissão no 1º mês de cada usuário indicado e 30% recorrente a partir do 2º mês.
+            Você recebe <strong>R$ 15,00 (100%)</strong> quando o indicado <strong>paga</strong> o
+            plano de 30 dias e o pagamento é confirmado — o cadastro sozinho não gera comissão. A
+            partir do 2º mês pago, você recebe <strong>30% recorrente</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -146,25 +148,38 @@ export function Indicacoes() {
                 <Wallet className="size-3.5" aria-hidden="true" /> Saldo disponível
               </p>
               <p className="mt-1 text-lg font-extrabold text-foreground">{brl(balance)}</p>
+              <p className="text-[10px] text-muted-foreground">só pagamentos confirmados</p>
             </div>
             <div className="rounded-lg border p-3">
               <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                 <MousePointerClick className="size-3.5" aria-hidden="true" /> Total de cliques
               </p>
               <p className="mt-1 text-lg font-extrabold text-foreground">{total}</p>
+              <p className="text-[10px] text-muted-foreground">{paid} viraram assinatura paga</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-lg bg-muted/50 p-2">
+              <p className="text-[10px] text-muted-foreground">1º mês (100%)</p>
+              <p className="text-sm font-bold text-foreground">{brl(firstMonth)}</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2">
+              <p className="text-[10px] text-muted-foreground">Recorrente (30%)</p>
+              <p className="text-sm font-bold text-foreground">{brl(recurring)}</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Suas vendas</p>
-            {total > 0 ? (
+            {paid > 0 ? (
               <ul className="space-y-1">
-                {Array.from({ length: total }).map((_, index) => (
+                {Array.from({ length: paid }).map((_, index) => (
                   <li
                     key={index}
                     className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
                   >
-                    <span className="text-foreground">Indicação #{index + 1}</span>
+                    <span className="text-foreground">Venda paga #{index + 1}</span>
                     <span className="font-semibold text-primary">
                       {brl(PLAN_PRICE)} · 100% (1º mês)
                     </span>
@@ -173,9 +188,16 @@ export function Indicacoes() {
               </ul>
             ) : (
               <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-                Nenhuma venda registrada ainda. Compartilhe seu link para começar.
+                Nenhuma venda paga registrada ainda. A comissão entra assim que o indicado pagar os
+                R$ 15,00 e o plano for aprovado.
               </p>
             )}
+            {pending > 0 ? (
+              <p className="rounded-lg border border-dashed border-amber/60 bg-amber-soft/40 p-3 text-xs text-foreground">
+                {pending} indicado(s) já se cadastraram mas ainda não pagaram — nenhuma comissão
+                gerada por esses cadastros.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
