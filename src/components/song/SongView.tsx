@@ -494,13 +494,13 @@ export function SongView({
       </div>
 
       <div
-        className="overflow-x-auto rounded-xl p-4"
+        className="overflow-x-auto rounded-2xl border border-border/40 p-4 shadow-sm sm:p-5"
         style={{ backgroundColor: theme.container, color: theme.lyric }}
       >
         <pre
           className={cn(
-            "whitespace-pre font-mono leading-relaxed tabular-nums",
-            stage || bigLyrics ? "text-xl" : "text-sm",
+            "whitespace-pre font-mono tabular-nums [font-variant-ligatures:none]",
+            stage || bigLyrics ? "text-xl leading-[1.85]" : "text-[0.9rem] leading-[1.7]",
           )}
         >
           {text.split("\n").map((line, index) => {
