@@ -18,6 +18,10 @@ type ReferralStats = {
   user_id: string;
   referral_code: string;
   total_referrals: number;
+  paid_referrals: number;
+  first_month_earnings: number;
+  recurring_earnings: number;
+  balance: number;
   claimed_rewards: number;
   available_referrals: number;
 };
@@ -50,7 +54,11 @@ export function Indicacoes() {
   const available = stats.data?.available_referrals ?? 0;
   const progress = Math.min(available, REFERRAL_GOAL);
   const canClaim = available >= REFERRAL_GOAL;
-  const balance = total * PLAN_PRICE;
+  const paid = Number(stats.data?.paid_referrals ?? 0);
+  const firstMonth = Number(stats.data?.first_month_earnings ?? 0);
+  const recurring = Number(stats.data?.recurring_earnings ?? 0);
+  const balance = Number(stats.data?.balance ?? 0);
+  const pending = Math.max(0, total - paid);
   const brl = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -66,7 +74,7 @@ export function Indicacoes() {
     }
     savePix();
     openWhatsApp(
-      `Olá! Quero solicitar meu saque de afiliado do CifraStop.\n\nCódigo: ${code}\nIndicações: ${total}\nSaldo disponível: ${brl(balance)}\nChave PIX: ${pixKey.trim()}`,
+      `Olá! Quero solicitar meu saque de afiliado do CifraStop.\n\nCódigo: ${code}\nIndicados que pagaram: ${paid}\nSaldo disponível: ${brl(balance)}\nChave PIX: ${pixKey.trim()}`,
     );
   };
 
