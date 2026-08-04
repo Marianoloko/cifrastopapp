@@ -218,8 +218,8 @@ function AuthPage() {
                 }}
                 className={
                   mode === item
-                    ? "rounded-md bg-card px-3 py-2 text-sm font-semibold text-card-foreground shadow-sm"
-                    : "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground"
+                    ? "rounded-md bg-card px-3 py-3 text-base font-bold text-card-foreground shadow-sm"
+                    : "rounded-md px-3 py-3 text-base font-medium text-muted-foreground"
                 }
               >
                 {item === "login" ? "Entrar" : "Criar conta"}
@@ -311,6 +311,7 @@ function AuthPage() {
                 id="email"
                 type="email"
                 placeholder="seu@email.com"
+                className="h-12 text-base"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -323,6 +324,7 @@ function AuthPage() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
+                className="h-12 text-base"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={6}
