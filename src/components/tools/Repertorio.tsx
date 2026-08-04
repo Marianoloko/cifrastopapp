@@ -172,6 +172,12 @@ export function Repertorio({
         themeId={themeId}
         onThemeChange={onThemeChange}
         mode={mode}
+        playlist={filtered.map((item) => ({
+          id: item.id,
+          title: item.title,
+          artist: item.artist,
+        }))}
+        onSelectSong={setSelectedId}
         onBack={() => setSelectedId(null)}
       />
     );
