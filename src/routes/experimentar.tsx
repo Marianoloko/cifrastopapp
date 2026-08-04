@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Headphones, ListMusic, Lock, Mic, Music2, Timer } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Headphones, ListMusic, Mic, Music2, Sparkles, Timer, X } from "lucide-react";
 
 import { Afinador } from "@/components/tools/Afinador";
 import { Gravador } from "@/components/tools/Gravador";
@@ -60,16 +60,30 @@ function DemoPage() {
   const [tab, setTab] = useState<TabId>("repertorio");
   const [theme, setTheme] = useState<CifraThemeId>("cifraclub");
   const [openSong, setOpenSong] = useState<Song | null>(null);
+  const [showCta, setShowCta] = useState(false);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
+  const engagement = useRef(0);
 
   const goRegister = () => navigate({ to: "/auth", search: { redirect: "/app" } });
 
+  // Conta as interações reais (abrir músicas, trocar de ferramenta) e só depois
+  // de o usuário realmente experimentar o app mostra o convite para criar conta.
+  const registerEngagement = () => {
+    engagement.current += 1;
+    if (engagement.current >= 4 && !ctaDismissed) setShowCta(true);
+  };
+
+  useEffect(() => {
+    if (ctaDismissed) return;
+    const timer = window.setTimeout(() => setShowCta(true), 120000);
+    return () => window.clearTimeout(timer);
+  }, [ctaDismissed]);
+
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
-        <span>Modo demonstração — crie sua conta para usar as ferramentas</span>
-        <Button size="sm" variant="secondary" onClick={goRegister}>
-          Criar conta grátis
-        </Button>
+      <div className="flex flex-wrap items-center justify-center gap-2 bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
+        <Sparkles className="size-3.5" aria-hidden="true" />
+        Teste livre — use tudo à vontade, sem cadastro
       </div>
 
       <header className="flex items-center justify-between px-4 py-3">
@@ -88,27 +102,43 @@ function DemoPage() {
       <main className="px-4">
         {tab === "repertorio" ? (
           <div className="space-y-3">
-            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs font-medium text-foreground">
-              Você está testando a versão grátis. Assine para liberar o catálogo completo e todas as
-              ferramentas!
-            </div>
-
             {openSong ? (
               <SongView
                 song={openSong}
                 themeId={theme}
                 onThemeChange={setTheme}
+                playlist={DEMO_SONGS.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  artist: item.artist,
+                }))}
+                onSelectSong={(id) => {
+                  const next = DEMO_SONGS.find((item) => item.id === id);
+                  if (next) setOpenSong(next);
+                  registerEngagement();
+                }}
                 onBack={() => setOpenSong(null)}
               />
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-bold text-foreground">Músicas de demonstração</p>
+                <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
+                  <h2 className="text-base font-extrabold text-foreground">
+                    Escolha uma música e toque agora
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Transposição de tom, rolagem automática, karaokê com vídeo e afinador — tudo
+                    liberado para você experimentar.
+                  </p>
+                </div>
                 {DEMO_SONGS.map((song) => (
                   <button
                     key={song.id}
                     type="button"
-                    onClick={() => setOpenSong(song)}
-                    className="flex w-full flex-col items-start rounded-xl border bg-card p-3 text-left"
+                    onClick={() => {
+                      setOpenSong(song);
+                      registerEngagement();
+                    }}
+                    className="flex w-full flex-col items-start rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/50"
                   >
                     <span className="text-sm font-bold text-card-foreground">{song.title}</span>
                     <span className="text-xs text-muted-foreground">
@@ -116,45 +146,51 @@ function DemoPage() {
                     </span>
                   </button>
                 ))}
-                <Button className="w-full" onClick={goRegister}>
-                  Criar conta grátis e liberar tudo
-                </Button>
               </div>
             )}
           </div>
         ) : (
-        <div className="relative">
-          <div
-            className="pointer-events-none select-none opacity-90"
-            aria-hidden="true"
-            inert={"" as unknown as boolean}
-          >
+          <div>
             {tab === "retorno" ? <Retorno /> : null}
             {tab === "afinador" ? <Afinador /> : null}
             {tab === "metronomo" ? <Metronomo /> : null}
             {tab === "gravador" ? <Gravador /> : null}
           </div>
-
-          <button
-            type="button"
-            onClick={goRegister}
-            aria-label="Criar conta para usar esta função"
-            className="absolute inset-0 z-10 flex items-end justify-center rounded-xl bg-background/10 pb-6"
-          >
-            <span className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-lg">
-              <Lock className="size-4" aria-hidden="true" />
-              Criar conta para usar — 4 horas grátis
-            </span>
-          </button>
-        </div>
         )}
       </main>
+
+      {showCta ? (
+        <div className="fixed inset-x-3 bottom-16 z-40 rounded-2xl border border-primary/40 bg-card p-4 shadow-xl">
+          <button
+            type="button"
+            onClick={() => {
+              setShowCta(false);
+              setCtaDismissed(true);
+            }}
+            aria-label="Fechar convite"
+            className="absolute right-2 top-2 text-muted-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+          <p className="pr-6 text-sm font-extrabold text-foreground">Gostou da experiência? 🎸</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Crie sua conta e libere todo o catálogo, seu repertório na nuvem e todas as ferramentas
+            por apenas <strong className="text-foreground">R$ 15/mês</strong>.
+          </p>
+          <Button className="mt-3 w-full" onClick={goRegister}>
+            Criar minha conta grátis
+          </Button>
+        </div>
+      ) : null}
 
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card/95 backdrop-blur">
         {TABS.map((item) => (
           <button
             key={item.id}
-            onClick={() => setTab(item.id)}
+            onClick={() => {
+              setTab(item.id);
+              registerEngagement();
+            }}
             className={cn(
               "flex flex-col items-center gap-1 py-2 text-[10px] font-semibold",
               tab === item.id ? "text-primary" : "text-muted-foreground",
