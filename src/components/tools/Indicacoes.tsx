@@ -1,12 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Check, Copy, Gift, Share2, Trophy, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BadgeDollarSign, Check, Copy, Gift, MousePointerClick, Share2, Trophy, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { openWhatsApp } from "@/lib/access";
+
+const PIX_STORAGE_KEY = "cifrastop:pix-key";
+const PLAN_PRICE = 15;
 
 type ReferralStats = {
   ok: boolean;
@@ -34,12 +39,36 @@ export function Indicacoes() {
   const queryClient = useQueryClient();
   const stats = useReferralStats();
   const [copied, setCopied] = useState<"code" | "id" | null>(null);
+  const [pixKey, setPixKey] = useState("");
+
+  useEffect(() => {
+    setPixKey(window.localStorage.getItem(PIX_STORAGE_KEY) ?? "");
+  }, []);
 
   const code = stats.data?.referral_code ?? "";
   const total = stats.data?.total_referrals ?? 0;
   const available = stats.data?.available_referrals ?? 0;
   const progress = Math.min(available, REFERRAL_GOAL);
   const canClaim = available >= REFERRAL_GOAL;
+  const balance = total * PLAN_PRICE;
+  const brl = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const savePix = () => {
+    window.localStorage.setItem(PIX_STORAGE_KEY, pixKey.trim());
+    toast.success("Chave PIX salva.");
+  };
+
+  const requestWithdraw = () => {
+    if (!pixKey.trim()) {
+      toast.error("Informe sua chave PIX antes de solicitar o saque.");
+      return;
+    }
+    savePix();
+    openWhatsApp(
+      `Olá! Quero solicitar meu saque de afiliado do CifraStop.\n\nCódigo: ${code}\nIndicações: ${total}\nSaldo disponível: ${brl(balance)}\nChave PIX: ${pixKey.trim()}`,
+    );
+  };
 
   const link =
     typeof window !== "undefined" && code
@@ -91,6 +120,78 @@ export function Indicacoes() {
           Seu amigo ganha 24 horas de teste VIP ao usar seu código!
         </p>
       </section>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BadgeDollarSign className="size-4 text-primary" aria-hidden="true" />
+            Painel de Afiliados
+          </CardTitle>
+          <CardDescription>
+            100% de comissão no 1º mês de cada usuário indicado e 30% recorrente a partir do 2º mês.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border p-3">
+              <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                <Wallet className="size-3.5" aria-hidden="true" /> Saldo disponível
+              </p>
+              <p className="mt-1 text-lg font-extrabold text-foreground">{brl(balance)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                <MousePointerClick className="size-3.5" aria-hidden="true" /> Total de cliques
+              </p>
+              <p className="mt-1 text-lg font-extrabold text-foreground">{total}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Suas vendas</p>
+            {total > 0 ? (
+              <ul className="space-y-1">
+                {Array.from({ length: total }).map((_, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
+                  >
+                    <span className="text-foreground">Indicação #{index + 1}</span>
+                    <span className="font-semibold text-primary">
+                      {brl(PLAN_PRICE)} · 100% (1º mês)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                Nenhuma venda registrada ainda. Compartilhe seu link para começar.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Chave PIX para recebimento</p>
+            <div className="flex gap-2">
+              <Input
+                value={pixKey}
+                onChange={(event) => setPixKey(event.target.value)}
+                placeholder="CPF, e-mail, telefone ou chave aleatória"
+                className="h-10 text-xs"
+              />
+              <Button size="sm" variant="outline" onClick={savePix}>
+                Salvar
+              </Button>
+            </div>
+            <Button className="w-full" onClick={requestWithdraw}>
+              Solicitar saque
+            </Button>
+            <p className="text-center text-[11px] text-muted-foreground">
+              Os pagamentos são processados a cada 5 dias.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">
