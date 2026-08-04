@@ -384,22 +384,17 @@ export function SongView({
             }}
             onLeaderChange={band.setLeader}
           />
+        </div>
+      ) : null}
 
-          {showDiagrams && chords.length > 0 ? (
-            <div
-              className="flex flex-wrap gap-2 rounded-lg p-2"
-              style={{ backgroundColor: theme.container }}
-            >
-              {chords.map((chord) => (
-                <ChordDiagram
-                  key={chord}
-                  chord={chord}
-                  color={theme.chord}
-                  instrument={instrument}
-                />
-              ))}
-            </div>
-          ) : null}
+      {!stage && showDiagrams && chords.length > 0 ? (
+        <div
+          className="flex flex-wrap gap-2 rounded-lg p-2"
+          style={{ backgroundColor: theme.container }}
+        >
+          {chords.map((chord) => (
+            <ChordDiagram key={chord} chord={chord} color={theme.chord} instrument={instrument} />
+          ))}
         </div>
       ) : null}
 
