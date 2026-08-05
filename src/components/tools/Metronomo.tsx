@@ -90,6 +90,27 @@ export function Metronomo() {
         <p className="text-6xl font-extrabold tabular-nums text-foreground">{bpm}</p>
         <p className="text-xs text-muted-foreground">BPM</p>
 
+        <div className="mt-5 grid place-items-center">
+          <span
+            className="grid size-24 place-items-center rounded-full border-4 transition-all duration-75"
+            style={{
+              borderColor: current >= 0 ? (current === 0 ? "var(--tom)" : "var(--amber)") : "var(--muted)",
+              backgroundColor:
+                current >= 0
+                  ? current === 0
+                    ? "color-mix(in oklab, var(--tom) 22%, transparent)"
+                    : "color-mix(in oklab, var(--amber) 18%, transparent)"
+                  : "transparent",
+              transform: current >= 0 ? "scale(1.06)" : "scale(1)",
+            }}
+            aria-hidden="true"
+          >
+            <span className="text-3xl font-extrabold tabular-nums text-foreground">
+              {current >= 0 ? current + 1 : "•"}
+            </span>
+          </span>
+        </div>
+
         <div className="mt-5 flex justify-center gap-2">
           {Array.from({ length: beats }).map((_, index) => (
             <span

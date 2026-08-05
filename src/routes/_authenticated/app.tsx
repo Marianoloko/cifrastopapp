@@ -5,27 +5,24 @@ import {
   Drum,
   Gift,
   GraduationCap,
-  Headphones,
   LifeBuoy,
   ListMusic,
   LogOut,
-  Mic,
-  Music2,
+  SlidersHorizontal,
   Sparkles,
-  Timer,
+  UserCircle2,
   UserCog,
 } from "lucide-react";
 
 import { Paywall } from "@/components/PlanGrid";
 import { TrialBanner } from "@/components/TrialBanner";
+import { Onboarding } from "@/components/app/Onboarding";
 import { Acompanhamento } from "@/components/tools/Acompanhamento";
-import { Afinador } from "@/components/tools/Afinador";
 import { CentralEstudos } from "@/components/tools/CentralEstudos";
-import { Gravador } from "@/components/tools/Gravador";
+import { Ferramentas } from "@/components/tools/Ferramentas";
 import { Indicacoes } from "@/components/tools/Indicacoes";
-import { Metronomo } from "@/components/tools/Metronomo";
+import { Perfil } from "@/components/tools/Perfil";
 import { Repertorio } from "@/components/tools/Repertorio";
-import { Retorno } from "@/components/tools/Retorno";
 import { Suporte } from "@/components/tools/Suporte";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,11 +64,9 @@ export const Route = createFileRoute("/_authenticated/app")({
 
 const TABS = [
   { id: "repertorio", label: "Repertório", icon: ListMusic },
-  { id: "retorno", label: "Retorno", icon: Headphones },
-  { id: "afinador", label: "Afinador", icon: Music2 },
-  { id: "metronomo", label: "Metrônomo", icon: Timer },
-  { id: "gravador", label: "Gravador", icon: Mic },
+  { id: "ferramentas", label: "Ferramentas", icon: SlidersHorizontal },
   { id: "estudos", label: "Estudos", icon: GraduationCap },
+  { id: "perfil", label: "Perfil", icon: UserCircle2 },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -171,20 +166,38 @@ function AppPage() {
       </header>
 
       <main className="px-4">
-        {tab === "repertorio" && data?.userId ? (
-          <Repertorio
-            userId={data.userId}
-            themeId={themeId}
-            onThemeChange={(id) => themeMutation.mutate(id)}
-            mode={mode ?? "instrumentista"}
+        {/* As abas ficam montadas e apenas ocultas para o áudio não parar ao navegar. */}
+        <div className={cn(tab === "repertorio" ? "block" : "hidden")}>
+          {data?.userId ? (
+            <Repertorio
+              userId={data.userId}
+              themeId={themeId}
+              onThemeChange={(id) => themeMutation.mutate(id)}
+              mode={mode ?? "instrumentista"}
+            />
+          ) : null}
+        </div>
+        <div className={cn(tab === "ferramentas" ? "block" : "hidden")}>
+          <Ferramentas />
+        </div>
+        <div className={cn(tab === "estudos" ? "block" : "hidden")}>
+          <CentralEstudos />
+        </div>
+        {tab === "perfil" ? (
+          <Perfil
+            email={data?.email ?? ""}
+            phone={(data?.profile as { phone?: string | null } | null)?.phone ?? null}
+            status={status}
+            remainingMs={remainingMs}
+            periodEnd={data?.subscription?.current_period_end ?? null}
+            mode={mode}
+            onModeChange={setMode}
+            onSignOut={signOut}
           />
         ) : null}
-        {tab === "retorno" ? <Retorno /> : null}
-        {tab === "afinador" ? <Afinador /> : null}
-        {tab === "metronomo" ? <Metronomo /> : null}
-        {tab === "gravador" ? <Gravador /> : null}
-        {tab === "estudos" ? <CentralEstudos /> : null}
       </main>
+
+      <Onboarding />
 
       <Dialog
         open={modeOpen || (modeReady && !mode)}
@@ -261,13 +274,13 @@ function AppPage() {
         </SheetContent>
       </Sheet>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t bg-card">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t bg-card">
         {TABS.map((item) => (
           <button
             key={item.id}
             onClick={() => setTab(item.id)}
             className={cn(
-              "flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors",
+              "flex flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
               tab === item.id ? "text-primary" : "text-muted-foreground",
             )}
           >
