@@ -51,6 +51,11 @@ export function BandSyncPanel({
   onLeaderChange: (leader: boolean) => void;
 }) {
   const [code, setCode] = useState("");
+  const createRoom = () => {
+    const generated = String(Math.floor(1000 + Math.random() * 9000));
+    onJoin(generated);
+    onLeaderChange(true);
+  };
 
   return (
     <div className="space-y-2 rounded-xl border bg-card p-3">
@@ -79,16 +84,28 @@ export function BandSyncPanel({
           </div>
         </div>
       ) : (
-        <div className="flex gap-2">
-          <Input
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase().slice(0, 8))}
-            placeholder="CÓDIGO DA SALA"
-            className={cn("h-9 font-mono text-xs uppercase")}
-          />
-          <Button size="sm" onClick={() => code.trim() && onJoin(code.trim())}>
-            Entrar
-          </Button>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            O líder cria a sala e passa o código de 4 dígitos para a banda. Ao trocar de música ou de
+            tom, a tela de todos atualiza na hora.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              value={code}
+              inputMode="numeric"
+              maxLength={4}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="0000"
+              className={cn("h-9 w-24 text-center font-mono text-base tracking-[0.4em]")}
+              aria-label="Código da sala"
+            />
+            <Button size="sm" onClick={() => code.length === 4 && onJoin(code)} disabled={code.length !== 4}>
+              Entrar
+            </Button>
+            <Button size="sm" variant="outline" onClick={createRoom}>
+              Criar sala
+            </Button>
+          </div>
         </div>
       )}
     </div>

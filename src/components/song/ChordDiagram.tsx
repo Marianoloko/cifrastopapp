@@ -20,17 +20,20 @@ function Fretboard({
   color,
   frets,
   strings,
+  lefty = false,
 }: {
   chord: string;
   color: string;
   frets: (number | null)[];
   strings: number;
+  lefty?: boolean;
 }) {
   const stringGap = strings > 4 ? 8 : 11;
   const fretGap = 11;
   const left = 10;
   const top = 20;
   const width = left * 2 + stringGap * (strings - 1);
+  const ordered = lefty ? [...frets].reverse() : frets;
 
   return (
     <svg width={width} height={76} role="img" aria-label={`Diagrama do acorde ${chord}`}>
@@ -60,7 +63,7 @@ function Fretboard({
           strokeOpacity="0.5"
         />
       ))}
-      {frets.map((fret, index) => {
+      {ordered.map((fret, index) => {
         const x = left + stringGap * index;
         if (fret === null) {
           return (
@@ -135,10 +138,12 @@ export function ChordDiagram({
   chord,
   color,
   instrument = "violao",
+  lefty = false,
 }: {
   chord: string;
   color: string;
   instrument?: DiagramInstrument;
+  lefty?: boolean;
 }) {
   if (instrument === "teclado") {
     return (
@@ -151,7 +156,7 @@ export function ChordDiagram({
   if (instrument === "baixo") {
     return (
       <figure className="flex flex-col items-center gap-1">
-        <BassBoard chord={chord} color={color} />
+        <BassBoard chord={chord} color={color} lefty={lefty} />
         <figcaption className="text-[10px]" style={{ color, opacity: 0.7 }}>
           fundamental
         </figcaption>
@@ -164,7 +169,7 @@ export function ChordDiagram({
     return (
       <figure className="flex flex-col items-center gap-1">
         {shape ? (
-          <Fretboard chord={chord} color={color} frets={shape} strings={4} />
+          <Fretboard chord={chord} color={color} frets={shape} strings={4} lefty={lefty} />
         ) : (
           <span className="text-xs font-bold" style={{ color }}>
             {chord} · sem diagrama
@@ -182,6 +187,7 @@ export function ChordDiagram({
         color={color}
         frets={shape ? shape.frets : [null, null, null, null, null, null]}
         strings={6}
+        lefty={lefty}
       />
       {!shape ? (
         <figcaption className="text-[10px]" style={{ color }}>
