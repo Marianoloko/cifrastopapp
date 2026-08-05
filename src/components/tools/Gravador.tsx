@@ -14,15 +14,50 @@ export function Gravador() {
   const [seconds, setSeconds] = useState(0);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const refs = useRef<{ recorder?: MediaRecorder; stream?: MediaStream; timer?: number }>({});
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const refs = useRef<{
+    recorder?: MediaRecorder;
+    stream?: MediaStream;
+    timer?: number;
+    ctx?: AudioContext;
+    frame?: number;
+  }>({});
 
   useEffect(
     () => () => {
       if (refs.current.timer) window.clearInterval(refs.current.timer);
+      if (refs.current.frame) window.cancelAnimationFrame(refs.current.frame);
+      void refs.current.ctx?.close();
       refs.current.stream?.getTracks().forEach((t) => t.stop());
     },
     [],
   );
+
+  const drawWave = (analyser: AnalyserNode) => {
+    const buffer = new Float32Array(analyser.fftSize);
+    const loop = () => {
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d");
+      if (canvas && context) {
+        const width = (canvas.width = canvas.clientWidth * 2);
+        const height = (canvas.height = 140);
+        analyser.getFloatTimeDomainData(buffer);
+        context.clearRect(0, 0, width, height);
+        context.lineWidth = 3;
+        context.strokeStyle = "oklch(0.72 0.18 42)";
+        context.beginPath();
+        for (let i = 0; i < buffer.length; i += 1) {
+          const x = (i / buffer.length) * width;
+          const y = height / 2 + buffer[i] * (height / 2) * 0.9;
+          if (i === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+        context.stroke();
+      }
+      refs.current.frame = window.requestAnimationFrame(loop);
+    };
+    refs.current.frame = window.requestAnimationFrame(loop);
+  };
 
   const start = async () => {
     setError(null);
@@ -40,9 +75,14 @@ export function Gravador() {
       };
       recorder.start();
       setSeconds(0);
-      refs.current = { recorder, stream };
+      const audioCtx = new AudioContext();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      refs.current = { recorder, stream, ctx: audioCtx };
       refs.current.timer = window.setInterval(() => setSeconds((s) => s + 1), 1000);
       setRecording(true);
+      drawWave(analyser);
     } catch {
       setError("Não foi possível acessar o microfone.");
     }
@@ -52,6 +92,10 @@ export function Gravador() {
     refs.current.recorder?.stop();
     refs.current.stream?.getTracks().forEach((t) => t.stop());
     if (refs.current.timer) window.clearInterval(refs.current.timer);
+    if (refs.current.frame) window.cancelAnimationFrame(refs.current.frame);
+    void refs.current.ctx?.close();
+    refs.current.ctx = undefined;
+    refs.current.frame = undefined;
     setRecording(false);
   };
 
@@ -61,9 +105,17 @@ export function Gravador() {
         <p className="font-mono text-5xl font-bold tabular-nums text-foreground">
           {formatTime(seconds)}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          {recording ? (
+            <span className="size-2 animate-pulse rounded-full bg-destructive" aria-hidden="true" />
+          ) : null}
           {recording ? "Gravando ensaio…" : "Pronto para gravar"}
         </p>
+        <canvas
+          ref={canvasRef}
+          className="mt-4 h-[70px] w-full rounded-lg bg-muted/40"
+          aria-label="Onda de áudio da gravação"
+        />
       </div>
 
       <Button

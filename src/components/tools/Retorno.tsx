@@ -69,6 +69,18 @@ export function Retorno() {
   const [silentRehearsal, setSilentRehearsal] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [lineDeviceId, setLineDeviceId] = useState<string>("");
+  const [micDeviceId, setMicDeviceId] = useState<string>("");
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        setDevices(all.filter((device) => device.kind === "audioinput"));
+      } catch {
+        setDevices([]);
+      }
+    })();
+  }, []);
 
   const refs = useRef<{
     ctx?: AudioContext;
@@ -119,6 +131,7 @@ export function Retorno() {
     try {
       const constraints: MediaStreamConstraints = {
         audio: {
+          ...(micDeviceId ? { deviceId: { exact: micDeviceId } } : {}),
           echoCancellation: false,
           noiseSuppression: denoise,
           autoGainControl: false,
@@ -211,13 +224,37 @@ export function Retorno() {
     <div className="space-y-4">
       {!active ? (
         <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 p-3">
+            <Headphones className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+            <p className="text-xs font-medium text-foreground">
+              <strong>Use fones de ouvido.</strong> Sem fone, o som do celular volta para o microfone e
+              causa microfonia (aquele apito agudo).
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground" htmlFor="mic-device">
+              Dispositivo de entrada (microfone)
+            </label>
+            <select
+              id="mic-device"
+              value={micDeviceId}
+              onChange={(event) => setMicDeviceId(event.target.value)}
+              className="w-full rounded-lg border bg-card p-2 text-xs text-foreground"
+            >
+              <option value="">Microfone padrão do aparelho</option>
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label || "Entrada de áudio"}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <Button className="h-14 w-full text-base font-semibold" onClick={start} disabled={starting}>
             <Headphones className="size-5" aria-hidden="true" />
             Ativar Retorno de Áudio ao Vivo
           </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Use fones de ouvido para evitar microfonia.
-          </p>
           <button
             type="button"
             onClick={() => {
