@@ -75,6 +75,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          last_seen_at: string | null
           phone: string | null
           preferred_cifra_theme: string
           referral_code: string
@@ -89,6 +90,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id: string
+          last_seen_at?: string | null
           phone?: string | null
           preferred_cifra_theme?: string
           referral_code?: string
@@ -103,6 +105,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          last_seen_at?: string | null
           phone?: string | null
           preferred_cifra_theme?: string
           referral_code?: string
@@ -249,6 +252,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      touch_last_seen: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
