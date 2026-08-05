@@ -125,13 +125,13 @@ function Keyboard({ chord, color }: { chord: string; color: string }) {
   );
 }
 
-function BassBoard({ chord, color }: { chord: string; color: string }) {
+function BassBoard({ chord, color, lefty = false }: { chord: string; color: string; lefty?: boolean }) {
   const positions = bassPositions(chord);
   const frets: (number | null)[] = [null, null, null, null];
   positions.forEach((position) => {
     frets[position.string] = position.fret;
   });
-  return <Fretboard chord={chord} color={color} frets={frets} strings={4} />;
+  return <Fretboard chord={chord} color={color} frets={frets} strings={4} lefty={lefty} />;
 }
 
 export function ChordDiagram({
