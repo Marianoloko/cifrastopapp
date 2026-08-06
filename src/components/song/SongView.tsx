@@ -492,7 +492,26 @@ export function SongView({
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="mr-auto flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => changeFont(-2)}
+            aria-label="Diminuir tamanho da letra"
+          >
+            <span className="text-xs font-bold">A−</span>
+          </Button>
+          <span className="w-8 text-center text-xs text-muted-foreground">{fontSize}</span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => changeFont(2)}
+            aria-label="Aumentar tamanho da letra"
+          >
+            <span className="text-sm font-bold">A+</span>
+          </Button>
+        </div>
         <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
           {scrolling ? (
             <Pause className="size-4" aria-hidden="true" />
@@ -514,8 +533,9 @@ export function SongView({
         <pre
           className={cn(
             "whitespace-pre font-mono tabular-nums [font-variant-ligatures:none]",
-            stage || bigLyrics ? "text-xl leading-[1.85]" : "text-[0.9rem] leading-[1.7]",
+            stage || bigLyrics ? "leading-[1.85]" : "leading-[1.7]",
           )}
+          style={{ fontSize: `${stage || bigLyrics ? fontSize + 5 : fontSize}px` }}
         >
           {text.split("\n").map((line, index) => {
             const isSection = /^\s*\[.*\]\s*$/.test(line);
