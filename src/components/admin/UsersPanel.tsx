@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Ban, ChevronDown, Music2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { Ban, ChevronDown, KeyRound, MessageCircle, Music2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   adminDeleteUser,
   adminListUserSongs,
   adminListUsers,
+  adminResetPassword,
   adminSetAccess,
   adminSetBan,
   type AdminUser,
@@ -27,6 +28,12 @@ const accessLabel: Record<AdminUser["access"], { label: string; variant: "defaul
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("pt-BR");
+}
+
+function whatsappLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const full = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${full}`;
 }
 
 function UserSongs({ userId }: { userId: string }) {
@@ -89,13 +96,19 @@ export function UsersPanel() {
   const setBanFn = useServerFn(adminSetBan);
   const deleteUserFn = useServerFn(adminDeleteUser);
   const setAccessFn = useServerFn(adminSetAccess);
+  const resetPasswordFn = useServerFn(adminResetPassword);
 
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [songsOpenId, setSongsOpenId] = useState<string | null>(null);
   const [daysById, setDaysById] = useState<Record<string, string>>({});
+  const [passwordById, setPasswordById] = useState<Record<string, string>>({});
 
-  const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
+  const usersQuery = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => listUsers(),
+    refetchInterval: 60_000,
+  });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin-users"] });
   const onError = (error: unknown) =>
@@ -124,6 +137,15 @@ export function UsersPanel() {
     onSuccess: (_r, vars) => {
       toast.success(vars.days > 0 ? `Acesso liberado por ${vars.days} dias.` : "Acesso removido.");
       void refresh();
+    },
+    onError,
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: (vars: { userId: string; password: string }) => resetPasswordFn({ data: vars }),
+    onSuccess: (_r, vars) => {
+      toast.success("Senha redefinida. Avise o usuário pelo WhatsApp.");
+      setPasswordById((prev) => ({ ...prev, [vars.userId]: "" }));
     },
     onError,
   });
@@ -185,13 +207,20 @@ export function UsersPanel() {
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium">
+                    <span
+                      className={`mr-1 inline-block size-2 rounded-full align-middle ${
+                        user.online ? "bg-green-500" : "bg-muted-foreground/40"
+                      }`}
+                      aria-label={user.online ? "Online agora" : "Offline"}
+                    />
                     {user.email || "(sem e-mail)"}
                     {user.is_admin ? (
                       <ShieldCheck className="ml-1 inline size-4 text-primary" aria-hidden="true" />
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Cadastro em {formatDate(user.created_at)}
+                    Cadastro em {formatDate(user.created_at)} · Visto por último em{" "}
+                    {formatDate(user.last_seen_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -212,7 +241,20 @@ export function UsersPanel() {
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">Telefone</dt>
-                      <dd>{user.phone || "—"}</dd>
+                      <dd className="flex items-center gap-2">
+                        {user.phone || "—"}
+                        {user.phone ? (
+                          <a
+                            href={whatsappLink(user.phone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium text-primary"
+                          >
+                            <MessageCircle className="size-3" aria-hidden="true" />
+                            WhatsApp
+                          </a>
+                        ) : null}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">Plano / assinatura</dt>
@@ -256,6 +298,38 @@ export function UsersPanel() {
                         : `Ver músicas salvas (${user.songs_count})`}
                     </Button>
                     {songsOpenId === user.id ? <UserSongs userId={user.id} /> : null}
+                  </div>
+
+                  <div className="flex flex-wrap items-end gap-2 rounded-lg border p-2">
+                    <div className="min-w-48 flex-1 space-y-1">
+                      <label className="text-xs text-muted-foreground" htmlFor={`pwd-${user.id}`}>
+                        Nova senha para este usuário
+                      </label>
+                      <Input
+                        id={`pwd-${user.id}`}
+                        type="text"
+                        autoComplete="off"
+                        placeholder="Mínimo 6 caracteres"
+                        value={passwordById[user.id] ?? ""}
+                        onChange={(event) =>
+                          setPasswordById((prev) => ({ ...prev, [user.id]: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={passwordMutation.isPending || (passwordById[user.id] ?? "").length < 6}
+                      onClick={() =>
+                        passwordMutation.mutate({
+                          userId: user.id,
+                          password: passwordById[user.id] ?? "",
+                        })
+                      }
+                    >
+                      <KeyRound className="size-4" aria-hidden="true" />
+                      Redefinir senha
+                    </Button>
                   </div>
 
                   <div className="flex flex-wrap items-end gap-2">

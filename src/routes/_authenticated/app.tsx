@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Drum,
   Gift,
@@ -88,6 +88,14 @@ function AppPage() {
   const { mode, setMode, ready: modeReady } = useUserMode();
   const [modeOpen, setModeOpen] = useState(false);
   const activeMode = USER_MODES.find((item) => item.id === mode) ?? null;
+
+  useEffect(() => {
+    if (!data?.userId) return;
+    const ping = () => void supabase.rpc("touch_last_seen");
+    ping();
+    const id = window.setInterval(ping, 120_000);
+    return () => window.clearInterval(id);
+  }, [data?.userId]);
 
   const themeMutation = useMutation({
     mutationFn: async (themeId: CifraThemeId) => {
