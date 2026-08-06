@@ -170,6 +170,8 @@ export type AdminUser = {
   subscription_status: string;
   current_period_end: string | null;
   access: "vip" | "trial" | "expired" | "banido";
+  last_seen_at: string | null;
+  online: boolean;
 };
 
 const TRIAL_MS = 4 * 60 * 60 * 1000;
@@ -230,8 +232,29 @@ export const adminListUsers = createServerFn({ method: "GET" })
         subscription_status: sub?.status ?? "inactive",
         current_period_end: sub?.current_period_end ?? null,
         access,
+        last_seen_at: profile.last_seen_at ?? null,
+        online: profile.last_seen_at
+          ? now - new Date(profile.last_seen_at).getTime() < 5 * 60 * 1000
+          : false,
       };
     });
+  });
+
+export const adminResetPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({ userId: z.string().uuid(), password: z.string().min(6).max(72) })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.password,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const adminSetBan = createServerFn({ method: "POST" })
