@@ -158,6 +158,39 @@ export type Database = {
         }
         Relationships: []
       }
+      study_plans: {
+        Row: {
+          created_at: string
+          id: string
+          meta: string
+          nivel: string
+          objetivo: string
+          plano: Json
+          tempo_diario: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meta: string
+          nivel: string
+          objetivo: string
+          plano: Json
+          tempo_diario: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meta?: string
+          nivel?: string
+          objetivo?: string
+          plano?: Json
+          tempo_diario?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           current_period_end: string | null
