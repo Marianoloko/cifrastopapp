@@ -264,59 +264,7 @@ export function SongView({
         </div>
       </div>
 
-      {canNavigate ? (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => goTo(index - 1)}
-            aria-label="Música anterior"
-          >
-            <ChevronLeft className="size-4" aria-hidden="true" />
-            Anterior
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" aria-label="Abrir lista do repertório">
-                <ListMusic className="size-4" aria-hidden="true" />
-                {index + 1}/{playlist.length}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="max-h-72 w-64 overflow-y-auto">
-              <DropdownMenuLabel>Trocar de música</DropdownMenuLabel>
-              {playlist.map((item) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  onSelect={() => {
-                    onSelectSong?.(item.id);
-                    window.scrollTo({ top: 0 });
-                    setScrolling(false);
-                  }}
-                  className={cn("flex-col items-start gap-0", item.id === song.id && "bg-accent")}
-                >
-                  <span className="w-full truncate text-sm font-medium">{item.title}</span>
-                  {item.artist ? (
-                    <span className="w-full truncate text-xs text-muted-foreground">
-                      {item.artist}
-                    </span>
-                  ) : null}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => goTo(index + 1)}
-            aria-label="Próxima música"
-          >
-            Próxima
-            <ChevronRight className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      ) : null}
+      {navBar}
 
       {!stage ? (
         <button
