@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { FileUp, Loader2, Music, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { FileDown, FileUp, Loader2, Music, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { NOTES_SHARP } from "@/lib/chords";
 import type { CifraThemeId } from "@/lib/cifra-themes";
 import { STARTER_SONGS } from "@/lib/starter-songs";
+import { exportSetlistPdf } from "@/lib/setlist-pdf";
 import type { UserModeId } from "@/lib/user-mode";
 
 const CAPOS = [
@@ -198,10 +199,28 @@ export function Repertorio({
         />
       </div>
 
-      <Button variant={showForm ? "outline" : "default"} className="w-full" onClick={() => setShowForm((v) => !v)}>
-        <Plus className="size-4" aria-hidden="true" />
-        {showForm ? "Fechar formulário" : "Nova música"}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant={showForm ? "outline" : "default"}
+          className="flex-1"
+          onClick={() => setShowForm((v) => !v)}
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          {showForm ? "Fechar formulário" : "Nova música"}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={filtered.length === 0}
+          onClick={() => {
+            const ok = exportSetlistPdf(filtered);
+            if (!ok) toast.error("Libere as janelas pop-up para gerar o PDF.");
+          }}
+          aria-label="Exportar setlist em PDF"
+        >
+          <FileDown className="size-4" aria-hidden="true" />
+          PDF
+        </Button>
+      </div>
 
       {showForm ? (
         <>
