@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ExternalLink, GraduationCap, Guitar, Mic2, Music4, Piano } from "lucide-react";
 
 import { Vocalize } from "@/components/tools/Vocalize";
+import { PlanoEstudoIA } from "@/components/tools/PlanoEstudoIA";
 import { cn } from "@/lib/utils";
 
 type Lesson = { title: string; description: string; search: string };
@@ -99,6 +100,8 @@ export function CentralEstudos() {
           <p className="text-xs">Escola CifraStop: rotinas curtas e aulas por instrumento.</p>
         </div>
       </div>
+
+      <PlanoEstudoIA />
 
       <div className="grid grid-cols-2 gap-2">
         {COURSES.map((item) => (
