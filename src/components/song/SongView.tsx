@@ -575,6 +575,8 @@ export function SongView({
         </pre>
       </div>
 
+      {navBar}
+
       <Dialog open={openChord !== null} onOpenChange={(open) => !open && setOpenChord(null)}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
