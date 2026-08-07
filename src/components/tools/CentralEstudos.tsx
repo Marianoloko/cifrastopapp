@@ -3,6 +3,7 @@ import { ExternalLink, GraduationCap, Guitar, Mic2, Music4, Piano } from "lucide
 
 import { Vocalize } from "@/components/tools/Vocalize";
 import { PlanoEstudoIA } from "@/components/tools/PlanoEstudoIA";
+import { GuiaEstudo } from "@/components/tools/GuiaEstudo";
 import { cn } from "@/lib/utils";
 
 type Lesson = { title: string; description: string; search: string };
@@ -102,6 +103,8 @@ export function CentralEstudos() {
       </div>
 
       <PlanoEstudoIA />
+
+      <GuiaEstudo />
 
       <div className="grid grid-cols-2 gap-2">
         {COURSES.map((item) => (
