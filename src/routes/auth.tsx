@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
+import { clearStoredReferral, getStoredReferral } from "@/lib/affiliate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +39,6 @@ function formatPhone(value: string) {
 function AuthPage() {
   const search = Route.useSearch();
   const [mode, setMode] = useState<"login" | "signup">("signup");
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -57,6 +56,12 @@ function AuthPage() {
     if (search.ref) {
       setReferralCode(search.ref);
       setMode("signup");
+      return;
+    }
+    const stored = getStoredReferral();
+    if (stored) {
+      setReferralCode(stored);
+      setMode("signup");
     }
   }, [search.ref]);
 
@@ -67,7 +72,10 @@ function AuthPage() {
       const { data, error } = await supabase.rpc("apply_referral_code", { _code: code });
       if (error) return;
       const result = data as unknown as { ok: boolean; message: string } | null;
-      if (result?.ok) setInfoMsg(result.message);
+      if (result?.ok) {
+        setInfoMsg(result.message);
+        clearStoredReferral();
+      }
     } catch {
       // silencioso: o cadastro já foi concluído
     }
@@ -102,23 +110,6 @@ function AuthPage() {
   const handleLogin = async (e: FormEvent) => {
 
     return handleSubmit(e);
-  };
-
-  const handleGoogle = async () => {
-    if (googleLoading || loading || redirecting) return;
-    setGoogleLoading(true);
-    setErrorMsg(null);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setErrorMsg("Não consegui entrar com o Google. Tente novamente.");
-      setGoogleLoading(false);
-      return;
-    }
-    if (result.redirected) return;
-    setRedirecting(true);
-    await navigate({ to: destination, replace: true });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -158,7 +149,7 @@ function AuthPage() {
         if (data.session) {
           await supabase
             .from("profiles")
-            .update({ phone: phoneDigits })
+            .update({ phone: phoneDigits, full_name: fullName.trim() })
             .eq("id", data.session.user.id);
           await applyReferral();
           setRedirecting(true);
@@ -225,32 +216,6 @@ function AuthPage() {
                 {item === "login" ? "Entrar" : "Criar conta"}
               </button>
             ))}
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="mb-4 h-14 w-full text-base font-bold"
-            onClick={handleGoogle}
-            disabled={googleLoading || loading || redirecting}
-          >
-            {googleLoading ? (
-              <Loader2 className="mr-2 size-5 animate-spin" />
-            ) : (
-              <svg viewBox="0 0 24 24" className="mr-2 size-5" aria-hidden="true">
-                <path fill="#4285F4" d="M23 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.2a5.3 5.3 0 0 1-2.3 3.5v2.9h3.7c2.2-2 3.4-5 3.4-8.6z" />
-                <path fill="#34A853" d="M12 24c3.1 0 5.7-1 7.6-2.8l-3.7-2.9c-1 .7-2.3 1.1-3.9 1.1-3 0-5.6-2-6.5-4.8H1.7v3C3.6 21.4 7.5 24 12 24z" />
-                <path fill="#FBBC05" d="M5.5 14.6a7.2 7.2 0 0 1 0-4.6v-3H1.7a12 12 0 0 0 0 10.6l3.8-3z" />
-                <path fill="#EA4335" d="M12 4.8c1.7 0 3.2.6 4.4 1.7l3.3-3.3C17.7 1.2 15.1 0 12 0 7.5 0 3.6 2.6 1.7 6.4l3.8 3C6.4 6.7 9 4.8 12 4.8z" />
-              </svg>
-            )}
-            Entrar com Google
-          </Button>
-
-          <div className="mb-4 flex items-center gap-3 text-xs font-medium text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            ou use seu e-mail
-            <span className="h-px flex-1 bg-border" />
           </div>
 
           {checkingSession || redirecting ? (

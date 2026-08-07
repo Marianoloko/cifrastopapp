@@ -1,9 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { FileDown, FileUp, Loader2, Music, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import {
+  FileDown,
+  FileUp,
+  Folder,
+  Loader2,
+  Music,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
+import { Lixeira } from "@/components/tools/Lixeira";
+import { SaveToFolder } from "@/components/tools/SaveToFolder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +82,8 @@ export function Repertorio({
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<"lista" | "pastas" | "lixeira">("lista");
+  const [folderId, setFolderId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const songsQuery = useQuery({
@@ -78,9 +92,58 @@ export function Repertorio({
       const { data, error } = await supabase
         .from("songs")
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Song[];
+    },
+  });
+
+  const foldersQuery = useQuery({
+    queryKey: ["folders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("folders")
+        .select("id, name")
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const folderSongsQuery = useQuery({
+    queryKey: ["folder-songs"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("folder_songs").select("folder_id, song_id");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const createFolderMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("folders").insert({ name, user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pasta criada!");
+      void queryClient.invalidateQueries({ queryKey: ["folders"] });
+    },
+    onError: () => toast.error("Não consegui criar a pasta."),
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("folders")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setFolderId(null);
+      void queryClient.invalidateQueries({ queryKey: ["folders"] });
     },
   });
 
@@ -119,11 +182,16 @@ export function Repertorio({
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("songs").delete().eq("id", id);
+      const { error } = await supabase
+        .from("songs")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
+      toast.success("Música movida para a lixeira (fica 7 dias lá).");
       void queryClient.invalidateQueries({ queryKey: ["songs"] });
+      void queryClient.invalidateQueries({ queryKey: ["songs-trash"] });
     },
   });
 
@@ -156,13 +224,31 @@ export function Repertorio({
   });
 
   const songs = songsQuery.data ?? [];
+  const inFolder = folderId
+    ? new Set(
+        (folderSongsQuery.data ?? [])
+          .filter((row) => row.folder_id === folderId)
+          .map((row) => row.song_id),
+      )
+    : null;
   const filtered = songs.filter((song) => {
+    if (inFolder && !inFolder.has(song.id)) return false;
     const term = search.trim().toLowerCase();
     if (!term) return true;
     return (
       song.title.toLowerCase().includes(term) || song.artist.toLowerCase().includes(term)
     );
   });
+
+  const openSong = (id: string) => {
+    setSelectedId(id);
+    const song = songs.find((item) => item.id === id);
+    if (song) {
+      void supabase
+        .from("song_plays")
+        .insert({ song_id: song.id, title: song.title, artist: song.artist, user_id: userId });
+    }
+  };
 
   const selected = songs.find((song) => song.id === selectedId) ?? null;
 
@@ -186,6 +272,86 @@ export function Repertorio({
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+        {(
+          [
+            { id: "lista", label: "Músicas" },
+            { id: "pastas", label: "Pastas" },
+            { id: "lixeira", label: "Lixeira" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => {
+              setView(tab.id);
+              if (tab.id !== "pastas") setFolderId(null);
+            }}
+            className={
+              view === tab.id
+                ? "rounded-lg bg-card px-3 py-2 text-sm font-bold text-card-foreground shadow-sm"
+                : "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
+            }
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "lixeira" ? <Lixeira /> : null}
+
+      {view === "pastas" ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={createFolderMutation.isPending}
+              onClick={() => {
+                const name = window.prompt("Nome da pasta (ex.: Culto Domingo)");
+                if (name && name.trim()) createFolderMutation.mutate(name.trim());
+              }}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Nova pasta
+            </Button>
+          </div>
+          {(foldersQuery.data ?? []).length === 0 ? (
+            <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Nenhuma pasta criada ainda.
+            </p>
+          ) : (
+            (foldersQuery.data ?? []).map((folder) => (
+              <div key={folder.id} className="flex items-center gap-2 rounded-xl border bg-card p-3">
+                <button
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => setFolderId(folderId === folder.id ? null : folder.id)}
+                >
+                  <Folder className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    {folder.name}
+                  </span>
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                    {(folderSongsQuery.data ?? []).filter((row) => row.folder_id === folder.id).length}{" "}
+                    música(s)
+                  </span>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Excluir pasta ${folder.name}`}
+                  onClick={() => deleteFolderMutation.mutate(folder.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" aria-hidden="true" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+
+      {view === "lixeira" ? null : (
+      <>
       <div className="relative">
         <Search
           className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -382,7 +548,7 @@ export function Repertorio({
             >
               <button
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                onClick={() => setSelectedId(song.id)}
+                onClick={() => openSong(song.id)}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-soft text-accent-foreground">
                   <Music className="size-4" aria-hidden="true" />
@@ -396,6 +562,7 @@ export function Repertorio({
                   </span>
                 </span>
               </button>
+              <SaveToFolder userId={userId} songId={song.id} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -408,6 +575,8 @@ export function Repertorio({
           ))
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

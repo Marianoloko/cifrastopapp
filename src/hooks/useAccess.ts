@@ -24,20 +24,26 @@ export function useAccess() {
       const userId = userData.user?.id;
       if (!userId) return null;
 
-      const [profileResult, subscriptionResult] = await Promise.all([
+      const [profileResult, subscriptionResult, settingsResult] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
         supabase
           .from("subscriptions")
           .select("status, current_period_end")
           .eq("user_id", userId)
           .maybeSingle(),
+        supabase.from("app_settings").select("value").eq("key", "trial").maybeSingle(),
       ]);
+
+      const hours = (settingsResult.data?.value as { hours?: number } | null)?.hours;
+      const trialMs =
+        typeof hours === "number" && hours > 0 ? hours * 60 * 60 * 1000 : TRIAL_MS;
 
       return {
         userId,
         email: userData.user?.email ?? "",
         profile: profileResult.data,
         subscription: subscriptionResult.data,
+        trialMs,
       };
     },
   });
@@ -51,6 +57,7 @@ export function useAccess() {
     status = "expired";
   } else if (query.data) {
     const subscription = query.data.subscription;
+    const trialMs = query.data.trialMs ?? TRIAL_MS;
     const banned = Boolean((query.data.profile as { banned?: boolean } | null)?.banned);
     const trialStart = query.data.profile?.trial_started_at
       ? new Date(query.data.profile.trial_started_at).getTime()
@@ -66,9 +73,9 @@ export function useAccess() {
       status = "expired";
     } else if (subscriptionActive) {
       status = "subscriber";
-    } else if (trialStart !== null && trialStart + TRIAL_MS > now) {
+    } else if (trialStart !== null && trialStart + trialMs > now) {
       status = "trial";
-      remainingMs = trialStart + TRIAL_MS - now;
+      remainingMs = trialStart + trialMs - now;
     } else {
       status = "expired";
     }

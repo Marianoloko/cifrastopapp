@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { UsersPanel } from "@/components/admin/UsersPanel";
+import { TopSongsCard, TrialSettingsCard, WithdrawalsCard } from "@/components/admin/AdminExtras";
 import {
   adminDeletePlan,
   adminGrantAccess,
@@ -152,6 +153,12 @@ function AdminPage() {
       </div>
 
       <UsersPanel />
+
+      <TrialSettingsCard />
+
+      <WithdrawalsCard />
+
+      <TopSongsCard />
 
       <Card>
         <CardHeader>

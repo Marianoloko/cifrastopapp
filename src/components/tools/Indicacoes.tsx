@@ -67,12 +67,19 @@ export function Indicacoes() {
     toast.success("Chave PIX salva.");
   };
 
-  const requestWithdraw = () => {
+  const requestWithdraw = async () => {
     if (!pixKey.trim()) {
       toast.error("Informe sua chave PIX antes de solicitar o saque.");
       return;
     }
     savePix();
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (userId && balance > 0) {
+      await supabase
+        .from("withdrawal_requests")
+        .insert({ user_id: userId, amount: balance, pix_key: pixKey.trim(), status: "pending" });
+    }
     openWhatsApp(
       `Olá! Quero solicitar meu saque de afiliado do CifraStop.\n\nCódigo: ${code}\nIndicados que pagaram: ${paid}\nSaldo disponível: ${brl(balance)}\nChave PIX: ${pixKey.trim()}`,
     );

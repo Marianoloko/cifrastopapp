@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      folder_songs: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          position: number
+          song_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          position?: number
+          song_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          position?: number
+          song_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_songs_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_songs_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folders: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           active: boolean
@@ -74,6 +167,7 @@ export type Database = {
           banned_at: string | null
           created_at: string
           email: string | null
+          full_name: string | null
           id: string
           last_seen_at: string | null
           phone: string | null
@@ -89,6 +183,7 @@ export type Database = {
           banned_at?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id: string
           last_seen_at?: string | null
           phone?: string | null
@@ -104,6 +199,7 @@ export type Database = {
           banned_at?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           last_seen_at?: string | null
           phone?: string | null
@@ -116,6 +212,33 @@ export type Database = {
         }
         Relationships: []
       }
+      song_plays: {
+        Row: {
+          artist: string
+          created_at: string
+          id: string
+          song_id: string | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          artist?: string
+          created_at?: string
+          id?: string
+          song_id?: string | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          artist?: string
+          created_at?: string
+          id?: string
+          song_id?: string | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       songs: {
         Row: {
           artist: string
@@ -123,6 +246,7 @@ export type Database = {
           bpm: number | null
           capo: string
           created_at: string
+          deleted_at: string | null
           id: string
           key: string
           media_url: string | null
@@ -136,6 +260,7 @@ export type Database = {
           bpm?: number | null
           capo?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           key?: string
           media_url?: string | null
@@ -149,6 +274,7 @@ export type Database = {
           bpm?: number | null
           capo?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           key?: string
           media_url?: string | null
@@ -269,6 +395,39 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawal_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          pix_key: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          pix_key: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          pix_key?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -285,6 +444,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      purge_trash: { Args: never; Returns: undefined }
       touch_last_seen: { Args: never; Returns: undefined }
     }
     Enums: {

@@ -1,0 +1,214 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+
+const brl = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+export function TrialSettingsCard() {
+  const queryClient = useQueryClient();
+  const [hours, setHours] = useState("4");
+
+  const settingQuery = useQuery({
+    queryKey: ["app-settings", "trial"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "trial")
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.value as { hours?: number } | null) ?? { hours: 4 };
+    },
+  });
+
+  useEffect(() => {
+    if (settingQuery.data?.hours) setHours(String(settingQuery.data.hours));
+  }, [settingQuery.data?.hours]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const value = Number(hours);
+      if (!Number.isFinite(value) || value <= 0) throw new Error("Informe um número de horas válido.");
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: "trial", value: { hours: value } }, { onConflict: "key" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Duração do teste grátis atualizada.");
+      void queryClient.invalidateQueries({ queryKey: ["app-settings", "trial"] });
+      void queryClient.invalidateQueries({ queryKey: ["access"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Não consegui salvar."),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Período de teste grátis</CardTitle>
+        <CardDescription>
+          Vale para todos os novos usuários e recalcula o tempo restante de quem já está testando.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="trial-hours">Horas de teste</Label>
+          <Input
+            id="trial-hours"
+            inputMode="numeric"
+            className="w-32"
+            value={hours}
+            onChange={(event) => setHours(event.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
+        </div>
+        <Button disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+          {saveMutation.isPending ? "Salvando…" : "Salvar duração"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function WithdrawalsCard() {
+  const queryClient = useQueryClient();
+
+  const listQuery = useQuery({
+    queryKey: ["admin-withdrawals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("withdrawal_requests")
+        .select("id, user_id, amount, pix_key, status, created_at, paid_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase
+        .from("withdrawal_requests")
+        .update({ status, paid_at: status === "paid" ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Solicitação atualizada.");
+      void queryClient.invalidateQueries({ queryKey: ["admin-withdrawals"] });
+    },
+    onError: () => toast.error("Não consegui atualizar a solicitação."),
+  });
+
+  const items = listQuery.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Solicitações de saque</CardTitle>
+        <CardDescription>Pedidos de pagamento dos afiliados.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {listQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma solicitação até agora.</p>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">
+                  {brl(Number(item.amount))} · {item.status}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  PIX: {item.pix_key} · {new Date(item.created_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={item.status === "paid" || updateMutation.isPending}
+                  onClick={() => updateMutation.mutate({ id: item.id, status: "paid" })}
+                >
+                  Marcar como pago
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={item.status === "rejected" || updateMutation.isPending}
+                  onClick={() => updateMutation.mutate({ id: item.id, status: "rejected" })}
+                >
+                  Recusar
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function TopSongsCard() {
+  const query = useQuery({
+    queryKey: ["admin-top-songs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("song_plays")
+        .select("title, artist")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      const counts = new Map<string, { title: string; artist: string; plays: number }>();
+      for (const row of data ?? []) {
+        const key = `${row.title}::${row.artist}`;
+        const current = counts.get(key);
+        if (current) current.plays += 1;
+        else counts.set(key, { title: row.title, artist: row.artist, plays: 1 });
+      }
+      return [...counts.values()].sort((a, b) => b.plays - a.plays).slice(0, 20);
+    },
+  });
+
+  const rows = query.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Músicas mais tocadas</CardTitle>
+        <CardDescription>Top 20 aberturas de cifra registradas no app.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {query.isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma reprodução registrada ainda.</p>
+        ) : (
+          rows.map((row, index) => (
+            <div
+              key={`${row.title}-${row.artist}`}
+              className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
+            >
+              <span className="truncate">
+                {index + 1}. {row.title}
+                <span className="text-muted-foreground"> — {row.artist || "Sem artista"}</span>
+              </span>
+              <span className="shrink-0 font-semibold">{row.plays}</span>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
