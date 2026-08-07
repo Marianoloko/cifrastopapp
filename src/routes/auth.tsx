@@ -149,7 +149,7 @@ function AuthPage() {
         if (data.session) {
           await supabase
             .from("profiles")
-            .update({ phone: phoneDigits })
+            .update({ phone: phoneDigits, full_name: fullName.trim() })
             .eq("id", data.session.user.id);
           await applyReferral();
           setRedirecting(true);
