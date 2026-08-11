@@ -62,6 +62,8 @@
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
   --color-emerald: var(--emerald);
+  --color-neon: var(--neon);
+  --color-vip: var(--vip);
   --color-teal: var(--teal);
   --color-tom: var(--tom);
 }
