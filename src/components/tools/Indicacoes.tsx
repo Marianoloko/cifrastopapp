@@ -1,11 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { BadgeDollarSign, Check, Copy, Gift, MousePointerClick, Share2, Trophy, Users, Wallet } from "lucide-react";
+import {
+  BadgeDollarSign,
+  Check,
+  Copy,
+  Gift,
+  Megaphone,
+  MousePointerClick,
+  QrCode,
+  Share2,
+  Trophy,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/access";
@@ -44,6 +65,7 @@ export function Indicacoes() {
   const stats = useReferralStats();
   const [copied, setCopied] = useState<"code" | "id" | null>(null);
   const [pixKey, setPixKey] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
 
   useEffect(() => {
     setPixKey(window.localStorage.getItem(PIX_STORAGE_KEY) ?? "");
@@ -87,8 +109,23 @@ export function Indicacoes() {
 
   const link =
     typeof window !== "undefined" && code
-      ? `${window.location.origin}/auth?ref=${code}`
+      ? `${window.location.origin}/?ref=${code}`
       : "";
+
+  useEffect(() => {
+    if (!link) return;
+    void QRCode.toDataURL(link, {
+      width: 512,
+      margin: 1,
+      color: { dark: "#0B0E14", light: "#FFFFFF" },
+    }).then(setQrDataUrl);
+  }, [link]);
+
+  const marketingTemplates = [
+    `🎸 Descobri o CifraStop: repertório, retorno de áudio, afinador, metrônomo e gravador no celular. Testa grátis pelo meu link: ${link}`,
+    `Cansou de perder a letra no meio do show? O CifraStop deixa seu repertório organizado e sincronizado. Use meu código ${code}: ${link}`,
+    `Sou músico e uso o CifraStop todo dia — ensaio, palco e estudo em um app só. Entra pelo meu link e ganhe acesso VIP de teste: ${link}`,
+  ];
 
   const copy = async (value: string, kind: "code" | "id") => {
     try {
@@ -236,6 +273,89 @@ export function Indicacoes() {
           <CardDescription>Compartilhe e acumule indicações.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-col gap-2 rounded-2xl border border-primary/25 bg-primary/5 p-3">
+            <p className="text-[11px] font-medium text-muted-foreground">Seu link de indicação</p>
+            <p className="truncate rounded-lg bg-background/60 px-3 py-2 font-mono text-xs text-foreground">
+              {link || "—"}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                className="flex-1 glow-hover"
+                disabled={!link}
+                onClick={() => copy(link, "code")}
+              >
+                {copied === "code" ? (
+                  <Check className="size-4" aria-hidden="true" />
+                ) : (
+                  <Copy className="size-4" aria-hidden="true" />
+                )}
+                Copiar link
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline" disabled={!qrDataUrl}>
+                    <QrCode className="size-4" aria-hidden="true" />
+                    QR Code
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>QR Code de indicação</DialogTitle>
+                    <DialogDescription>
+                      Baixe e use em stories, panfletos ou no palco.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {qrDataUrl ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <img
+                        src={qrDataUrl}
+                        alt={`QR Code do link de indicação ${code}`}
+                        className="size-56 rounded-2xl border"
+                      />
+                      <a
+                        href={qrDataUrl}
+                        download={`cifrastop-${code}.png`}
+                        className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground glow-hover"
+                      >
+                        Baixar QR Code
+                      </a>
+                    </div>
+                  ) : null}
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button type="button" variant="secondary" className="w-full" disabled={!code}>
+                <Megaphone className="size-4" aria-hidden="true" />
+                Kit de marketing
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Kit de marketing</DialogTitle>
+                <DialogDescription>
+                  Textos prontos para WhatsApp e redes sociais — toque para copiar.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {marketingTemplates.map((template) => (
+                  <button
+                    key={template}
+                    type="button"
+                    onClick={() => copy(template, "code")}
+                    className="w-full rounded-2xl border p-3 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  >
+                    {template}
+                  </button>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <div className="flex items-center gap-2">
             <div className="flex-1 rounded-lg border bg-muted/40 px-3 py-2 text-center text-xl font-extrabold tracking-[0.2em] text-foreground">
               {stats.isLoading ? "••••••••" : code || "—"}

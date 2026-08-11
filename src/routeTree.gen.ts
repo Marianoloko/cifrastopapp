@@ -13,6 +13,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ExperimentarRouteImport } from './routes/experimentar'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AfiliadosRouteImport } from './routes/afiliados'
+import { Route as AfiliadoRouteImport } from './routes/afiliado'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedImpulsionamentoRouteImport } from './routes/_authenticated/impulsionamento'
@@ -37,6 +39,16 @@ const ExperimentarRoute = ExperimentarRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AfiliadosRoute = AfiliadosRouteImport.update({
+  id: '/afiliados',
+  path: '/afiliados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AfiliadoRoute = AfiliadoRouteImport.update({
+  id: '/afiliado',
+  path: '/afiliado',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -67,6 +79,8 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/afiliado': typeof AfiliadoRoute
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
   '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -77,6 +91,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/afiliado': typeof AfiliadoRoute
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
   '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -89,6 +105,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/afiliado': typeof AfiliadoRoute
+  '/afiliados': typeof AfiliadosRoute
   '/auth': typeof AuthRoute
   '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -101,6 +119,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/afiliado'
+    | '/afiliados'
     | '/auth'
     | '/experimentar'
     | '/reset-password'
@@ -111,6 +131,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/afiliado'
+    | '/afiliados'
     | '/auth'
     | '/experimentar'
     | '/reset-password'
@@ -122,6 +144,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/afiliado'
+    | '/afiliados'
     | '/auth'
     | '/experimentar'
     | '/reset-password'
@@ -134,6 +158,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AfiliadoRoute: typeof AfiliadoRoute
+  AfiliadosRoute: typeof AfiliadosRoute
   AuthRoute: typeof AuthRoute
   ExperimentarRoute: typeof ExperimentarRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -168,6 +194,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/afiliados': {
+      id: '/afiliados'
+      path: '/afiliados'
+      fullPath: '/afiliados'
+      preLoaderRoute: typeof AfiliadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/afiliado': {
+      id: '/afiliado'
+      path: '/afiliado'
+      fullPath: '/afiliado'
+      preLoaderRoute: typeof AfiliadoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -226,6 +266,8 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AfiliadoRoute: AfiliadoRoute,
+  AfiliadosRoute: AfiliadosRoute,
   AuthRoute: AuthRoute,
   ExperimentarRoute: ExperimentarRoute,
   ResetPasswordRoute: ResetPasswordRoute,

@@ -11,6 +11,65 @@ import { supabase } from "@/integrations/supabase/client";
 const brl = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const TRIAL_PRESETS = [
+  { label: "4 horas", hours: 4 },
+  { label: "24 horas", hours: 24 },
+  { label: "7 dias", hours: 24 * 7 },
+  { label: "30 dias", hours: 24 * 30 },
+  { label: "60 dias", hours: 24 * 60 },
+  { label: "1 ano", hours: 24 * 365 },
+  { label: "Ilimitado", hours: 24 * 365 * 100 },
+];
+
+export function AdminMetricsCards() {
+  const query = useQuery({
+    queryKey: ["admin-metrics"],
+    queryFn: async () => {
+      const [profiles, subs, withdrawals] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("subscriptions").select("status, current_period_end, paid_months"),
+        supabase.from("withdrawal_requests").select("amount, status"),
+      ]);
+      const now = Date.now();
+      const subscriptions = subs.data ?? [];
+      const vip = subscriptions.filter(
+        (row) =>
+          row.status === "active" &&
+          (!row.current_period_end || new Date(row.current_period_end).getTime() > now),
+      ).length;
+      const revenue = subscriptions.reduce((total, row) => total + Number(row.paid_months ?? 0) * 15, 0);
+      const pendingPayouts = (withdrawals.data ?? [])
+        .filter((row) => row.status === "pending")
+        .reduce((total, row) => total + Number(row.amount ?? 0), 0);
+      const users = profiles.count ?? 0;
+      return { users, vip, trialing: Math.max(0, users - vip), revenue, pendingPayouts };
+    },
+  });
+
+  const data = query.data;
+  const cards = [
+    { label: "Receita total", value: brl(data?.revenue ?? 0), tone: "text-primary" },
+    { label: "Usuários em teste", value: String(data?.trialing ?? 0), tone: "text-foreground" },
+    { label: "Usuários VIP", value: String(data?.vip ?? 0), tone: "text-accent" },
+    { label: "Comissões a pagar", value: brl(data?.pendingPayouts ?? 0), tone: "text-primary" },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map((card) => (
+        <Card key={card.label} className="glass">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
+            <p className={`mt-1 text-2xl font-extrabold ${card.tone}`}>
+              {query.isLoading ? "—" : card.value}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function TrialSettingsCard() {
   const queryClient = useQueryClient();
   const [hours, setHours] = useState("4");
@@ -66,12 +125,25 @@ export function TrialSettingsCard() {
             inputMode="numeric"
             className="w-32"
             value={hours}
-            onChange={(event) => setHours(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={(event) => setHours(event.target.value.replace(/\D/g, "").slice(0, 7))}
           />
         </div>
         <Button disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
           {saveMutation.isPending ? "Salvando…" : "Salvar duração"}
         </Button>
+        <div className="flex w-full flex-wrap gap-2">
+          {TRIAL_PRESETS.map((preset) => (
+            <Button
+              key={preset.label}
+              type="button"
+              size="sm"
+              variant={Number(hours) === preset.hours ? "default" : "outline"}
+              onClick={() => setHours(String(preset.hours))}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
