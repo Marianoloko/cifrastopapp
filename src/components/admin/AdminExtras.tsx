@@ -125,7 +125,7 @@ export function TrialSettingsCard() {
             inputMode="numeric"
             className="w-32"
             value={hours}
-            onChange={(event) => setHours(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={(event) => setHours(event.target.value.replace(/\D/g, "").slice(0, 7))}
           />
         </div>
         <Button disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
