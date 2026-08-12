@@ -65,16 +65,16 @@ function parseCifraPage(html: string, sourceUrl: string): CifraWebResult | null 
   const titleMatch =
     html.match(/<h1[^>]*class="[^"]*t1[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
     html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const artistMatch =
-    html.match(/<h2[^>]*class="[^"]*t3[^"]*"[^>]*>([\s\S]*?)<\/h2>/i) ||
-    html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+  const artistMatch = html.match(/<h2[^>]*class="[^"]*t3[^"]*"[^>]*>([\s\S]*?)<\/h2>/i);
   const keyMatch =
     html.match(/id="cifra_tom"[^>]*>([\s\S]*?)<\/span>/i) ||
     html.match(/tom:\s*<[^>]*>([^<]{1,4})</i);
 
+  const titleCase = (value: string) =>
+    value.replace(/\b\w/g, (letter) => letter.toUpperCase());
   const slug = sourceUrl.split("/").filter(Boolean);
-  const fallbackArtist = (slug[slug.length - 2] ?? "").replace(/-/g, " ");
-  const fallbackTitle = (slug[slug.length - 1] ?? "").replace(/-/g, " ");
+  const fallbackArtist = titleCase((slug[slug.length - 2] ?? "").replace(/-/g, " "));
+  const fallbackTitle = titleCase((slug[slug.length - 1] ?? "").replace(/-/g, " "));
 
   return {
     title: (titleMatch ? stripTags(titleMatch[1]) : "") || fallbackTitle,
