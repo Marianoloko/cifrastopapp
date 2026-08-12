@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { SongView, type Song } from "@/components/song/SongView";
+import { BuscaCifraWeb } from "@/components/tools/BuscaCifraWeb";
 import { Lixeira } from "@/components/tools/Lixeira";
 import { SaveToFolder } from "@/components/tools/SaveToFolder";
 import { Button } from "@/components/ui/button";
@@ -297,6 +298,15 @@ export function Repertorio({
           </button>
         ))}
       </div>
+
+      {view === "lista" ? (
+        <BuscaCifraWeb
+          userId={userId}
+          themeId={themeId}
+          onThemeChange={onThemeChange}
+          mode={mode}
+        />
+      ) : null}
 
       {view === "lixeira" ? <Lixeira /> : null}
 

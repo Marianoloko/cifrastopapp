@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -33,6 +33,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useServerFn } from "@tanstack/react-start";
+
+import { adminIsAdmin } from "@/lib/admin.functions";
 import { useAccess } from "@/hooks/useAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/access";
@@ -85,6 +88,26 @@ function AppPage() {
   const [hubOpen, setHubOpen] = useState(false);
   const [hubTab, setHubTab] = useState<HubId>("indicacoes");
   const { data, status, remainingMs } = useAccess();
+  const checkAdmin = useServerFn(adminIsAdmin);
+  const adminQuery = useQuery({ queryKey: ["is-admin"], queryFn: () => checkAdmin() });
+  const settingsQuery = useQuery({
+    queryKey: ["app-notices"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .in("key", ["banner", "maintenance"]);
+      const map = new Map((rows ?? []).map((row) => [row.key, row.value as any]));
+      return {
+        banner: (map.get("banner") ?? {}) as { enabled?: boolean; message?: string },
+        maintenance: (map.get("maintenance") ?? {}) as { enabled?: boolean; message?: string },
+      };
+    },
+  });
+  const isAdmin = adminQuery.data === true;
+  const maintenance = settingsQuery.data?.maintenance;
+  const banner = settingsQuery.data?.banner;
   const { mode, setMode, ready: modeReady } = useUserMode();
   const [modeOpen, setModeOpen] = useState(false);
   const activeMode = USER_MODES.find((item) => item.id === mode) ?? null;
@@ -124,12 +147,29 @@ function AppPage() {
     );
   }
 
+  if (maintenance?.enabled && !isAdmin) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+        <h1 className="text-2xl font-extrabold text-foreground">Em atualização</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {maintenance.message ||
+            "Estamos deixando o CifraStop ainda melhor. Volte em alguns minutos."}
+        </p>
+      </div>
+    );
+  }
+
   if (status === "expired") return <Paywall />;
 
   const themeId = (data?.profile?.preferred_cifra_theme ?? "cifraclub") as CifraThemeId;
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      {banner?.enabled && banner.message ? (
+        <div className="bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
+          {banner.message}
+        </div>
+      ) : null}
       {status === "trial" ? (
         <TrialBanner
           remainingMs={remainingMs}

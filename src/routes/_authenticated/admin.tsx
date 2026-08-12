@@ -19,6 +19,14 @@ import {
   WithdrawalsCard,
 } from "@/components/admin/AdminExtras";
 import {
+  ExpiredOfferCard,
+  GlobalBannerCard,
+  MaintenanceCard,
+  PurgeTrashCard,
+  SearchMissesCard,
+  TopSavedSongsCard,
+} from "@/components/admin/AdminSystem";
+import {
   adminDeletePlan,
   adminGrantAccess,
   adminIsAdmin,
@@ -166,6 +174,18 @@ function AdminPage() {
       <WithdrawalsCard />
 
       <TopSongsCard />
+
+      <TopSavedSongsCard />
+
+      <SearchMissesCard />
+
+      <GlobalBannerCard />
+
+      <ExpiredOfferCard />
+
+      <MaintenanceCard />
+
+      <PurgeTrashCard />
 
       <Card>
         <CardHeader>

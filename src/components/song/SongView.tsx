@@ -106,6 +106,7 @@ export function SongView({
   const [mediaUrl, setMediaUrl] = useState(song.media_url ?? "");
   const [karaoke, setKaraoke] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const speedRef = useRef(speed);
   speedRef.current = speed;
@@ -285,29 +286,9 @@ export function SongView({
       ) : null}
 
       {!stage && showSettings ? (
-        <div className="space-y-3 rounded-xl border bg-card p-3">
-          <div>
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">Modelo visual</p>
-            <div className="flex flex-wrap gap-2">
-              {CIFRA_THEMES.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => onThemeChange(option.id)}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    option.id === themeId
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <div className="space-y-4 rounded-xl border bg-card p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Tom</span>
+            <span className="w-24 text-xs font-semibold text-muted-foreground">Tom</span>
             <Button variant="outline" size="icon" onClick={() => changeTom(-1)}>
               <Minus className="size-4" aria-hidden="true" />
               <span className="sr-only">Descer meio tom</span>
@@ -354,79 +335,36 @@ export function SongView({
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-24 text-xs font-semibold text-muted-foreground">Fonte</span>
             <Button
-              size="sm"
-              variant={bigLyrics ? "default" : "outline"}
-              onClick={() => setBigLyrics((v) => !v)}
+              variant="outline"
+              size="icon"
+              onClick={() => changeFont(-2)}
+              aria-label="Diminuir tamanho da letra"
             >
-              <Type className="size-4" aria-hidden="true" />
-              Letra grande
+              <span className="text-xs font-bold">A−</span>
             </Button>
+            <span className="w-10 text-center font-mono text-sm">{fontSize}</span>
             <Button
-              size="sm"
-              variant={hideChords ? "default" : "outline"}
-              onClick={() => setHideChords((v) => !v)}
+              variant="outline"
+              size="icon"
+              onClick={() => changeFont(2)}
+              aria-label="Aumentar tamanho da letra"
             >
-              Só letra
+              <span className="text-sm font-bold">A+</span>
             </Button>
-            <Button
-              size="sm"
-              variant={contrast ? "default" : "outline"}
-              onClick={() => setContrast((v) => !v)}
-            >
-              <Contrast className="size-4" aria-hidden="true" />
-              Alto contraste
-            </Button>
-            {mode === "iniciante" ? (
-              <Button
-                size="sm"
-                variant={easy ? "default" : "outline"}
-                onClick={() => setEasy((v) => !v)}
-              >
-                <Sparkles className="size-4" aria-hidden="true" />
-                {easy ? "Versão fácil" : "Versão original"}
-              </Button>
-            ) : null}
           </div>
 
-          {easy ? (
-            <p className="rounded-lg bg-muted p-2 text-xs text-muted-foreground">
-              Versão fácil: acordes sem pestana. Para soar no tom original, ponha o capotraste na{" "}
-              <strong>{easyInfo.capo === 0 ? "casa 0 (sem capo)" : `${easyInfo.capo}ª casa`}</strong>.
-            </p>
-          ) : null}
-
-          {mode !== "cantor" ? (
-            <div className="flex flex-wrap gap-2">
-              {DIAGRAM_INSTRUMENTS.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => {
-                    setInstrument(option.id);
-                    saveDiagramInstrument(option.id);
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    option.id === instrument
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
+            <span className="w-24 text-xs font-semibold text-muted-foreground">Rolagem</span>
+            <Button variant="outline" size="icon" onClick={() => setScrolling((v) => !v)}>
               {scrolling ? (
                 <Pause className="size-4" aria-hidden="true" />
               ) : (
                 <Play className="size-4" aria-hidden="true" />
               )}
-              Rolagem
+              <span className="sr-only">Ligar ou desligar a rolagem automática</span>
             </Button>
             <Slider
               value={[speed]}
@@ -439,35 +377,60 @@ export function SongView({
             <span className="w-6 text-center text-xs text-muted-foreground">{speed}</span>
           </div>
 
-          <div className="space-y-2 rounded-lg border p-3">
-            <div className="flex items-center gap-2">
-              <Link2 className="size-4 text-primary" aria-hidden="true" />
-              <p className="text-xs font-bold text-foreground">Áudio ou vídeo da música</p>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                value={mediaUrl}
-                onChange={(event) => setMediaUrl(event.target.value)}
-                placeholder="Cole o link do YouTube, Spotify ou áudio"
-                className="h-9 text-xs"
-              />
-              <Button size="sm" onClick={() => mediaMutation.mutate(mediaUrl)}>
-                Salvar
-              </Button>
-            </div>
-            <Button
-              size="sm"
-              variant={karaoke ? "default" : "outline"}
-              onClick={() => {
-                setKaraoke((v) => !v);
-                if (!karaoke) setScrolling(true);
-              }}
-            >
-              <Mic2 className="size-4" aria-hidden="true" />
-              Modo Karaokê (rolagem junto com o áudio)
+          <Button
+            variant={stage ? "default" : "outline"}
+            size="sm"
+            className="w-full"
+            onClick={() => setStage(true)}
+          >
+            <Maximize2 className="size-4" aria-hidden="true" />
+            Modo Palco
+          </Button>
+        </div>
+      ) : null}
+
+      {!stage ? (
+        <button
+          type="button"
+          onClick={() => setShowExtras((v) => !v)}
+          aria-expanded={showExtras}
+          className="flex w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-card-foreground"
+        >
+          <span className="flex items-center gap-2">
+            <Link2 className="size-4 text-primary" aria-hidden="true" />
+            Áudio e Modo Banda
+          </span>
+          <ChevronDown
+            className={cn("size-4 transition-transform", showExtras && "rotate-180")}
+            aria-hidden="true"
+          />
+        </button>
+      ) : null}
+
+      {!stage && showExtras ? (
+        <div className="space-y-3 rounded-xl border bg-card p-3">
+          <div className="flex gap-2">
+            <Input
+              value={mediaUrl}
+              onChange={(event) => setMediaUrl(event.target.value)}
+              placeholder="Cole o link do YouTube, Spotify ou áudio"
+              className="h-9 text-xs"
+            />
+            <Button size="sm" onClick={() => mediaMutation.mutate(mediaUrl)}>
+              Salvar
             </Button>
           </div>
-
+          <Button
+            size="sm"
+            variant={karaoke ? "default" : "outline"}
+            onClick={() => {
+              setKaraoke((v) => !v);
+              if (!karaoke) setScrolling(true);
+            }}
+          >
+            <Mic2 className="size-4" aria-hidden="true" />
+            Modo Karaokê (rolagem junto com o áudio)
+          </Button>
           <BandSyncPanel
             room={band.room}
             leader={band.leader}
