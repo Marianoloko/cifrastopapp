@@ -163,6 +163,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_notes: string | null
           banned: boolean
           banned_at: string | null
           created_at: string
@@ -179,6 +180,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
           banned?: boolean
           banned_at?: string | null
           created_at?: string
@@ -195,6 +197,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
           banned?: boolean
           banned_at?: string | null
           created_at?: string
@@ -209,6 +212,27 @@ export type Database = {
           referred_by?: string | null
           trial_started_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      search_misses: {
+        Row: {
+          created_at: string
+          id: string
+          query: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          query: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          query?: string
+          user_id?: string | null
         }
         Relationships: []
       }

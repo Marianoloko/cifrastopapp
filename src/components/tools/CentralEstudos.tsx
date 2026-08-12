@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ExternalLink, GraduationCap, Guitar, Mic2, Music4, Piano } from "lucide-react";
 
 import { Vocalize } from "@/components/tools/Vocalize";
-import { PlanoEstudoIA } from "@/components/tools/PlanoEstudoIA";
 import { GuiaEstudo } from "@/components/tools/GuiaEstudo";
 import { cn } from "@/lib/utils";
 
@@ -101,8 +100,6 @@ export function CentralEstudos() {
           <p className="text-xs">Escola CifraStop: rotinas curtas e aulas por instrumento.</p>
         </div>
       </div>
-
-      <PlanoEstudoIA />
 
       <GuiaEstudo />
 
