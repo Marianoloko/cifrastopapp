@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { shapeFor } from "@/lib/chords";
 import {
   bassPositions,
@@ -134,17 +136,27 @@ function BassBoard({ chord, color, lefty = false }: { chord: string; color: stri
   return <Fretboard chord={chord} color={color} frets={frets} strings={4} lefty={lefty} />;
 }
 
+const NEON = "#39FF14";
+
 export function ChordDiagram({
   chord,
-  color,
+  color = NEON,
   instrument = "violao",
   lefty = false,
+  interactive = false,
 }: {
   chord: string;
-  color: string;
+  color?: string;
   instrument?: DiagramInstrument;
   lefty?: boolean;
+  interactive?: boolean;
 }) {
+  if (interactive) {
+    return (
+      <InteractiveDiagram chord={chord} color={color} instrument={instrument} lefty={lefty} />
+    );
+  }
+
   if (instrument === "teclado") {
     return (
       <figure className="flex flex-col items-center gap-1">
@@ -195,5 +207,30 @@ export function ChordDiagram({
         </figcaption>
       ) : null}
     </figure>
+  );
+}
+
+function InteractiveDiagram({
+  chord,
+  color,
+  instrument,
+  lefty,
+}: {
+  chord: string;
+  color: string;
+  instrument: DiagramInstrument;
+  lefty: boolean;
+}) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label={`Destacar acorde ${chord}`}
+      onClick={() => setPressed((v) => !v)}
+      className="rounded-lg p-1 transition-transform active:scale-95"
+      style={pressed ? { boxShadow: `0 0 0 2px ${color}, 0 0 14px ${color}55` } : undefined}
+    >
+      <ChordDiagram chord={chord} color={color} instrument={instrument} lefty={lefty} />
+    </button>
   );
 }

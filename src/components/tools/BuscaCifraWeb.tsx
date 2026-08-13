@@ -8,7 +8,12 @@ import { SongView, type Song } from "@/components/song/SongView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { buscarCifraWeb, type CifraWebResult } from "@/lib/cifra-search.functions";
+import {
+  abrirCifraWeb,
+  buscarCifraOpcoes,
+  type CifraWebOption,
+  type CifraWebResult,
+} from "@/lib/cifra-search.functions";
 import type { CifraThemeId } from "@/lib/cifra-themes";
 import type { UserModeId } from "@/lib/user-mode";
 
@@ -23,10 +28,12 @@ export function BuscaCifraWeb({
   onThemeChange: (id: CifraThemeId) => void;
   mode?: UserModeId;
 }) {
-  const buscar = useServerFn(buscarCifraWeb);
+  const buscar = useServerFn(buscarCifraOpcoes);
+  const abrir = useServerFn(abrirCifraWeb);
   const queryClient = useQueryClient();
   const [term, setTerm] = useState("");
   const [result, setResult] = useState<CifraWebResult | null>(null);
+  const [options, setOptions] = useState<CifraWebOption[] | null>(null);
   const [folderId, setFolderId] = useState("");
 
   const foldersQuery = useQuery({
@@ -44,9 +51,19 @@ export function BuscaCifraWeb({
 
   const searchMutation = useMutation({
     mutationFn: () => buscar({ data: { query: term.trim() } }),
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => {
+      setOptions(data);
+      if (data.length === 0) toast.error("Não encontrei cifras com esse nome.");
+    },
     onError: (error: unknown) =>
       toast.error(error instanceof Error ? error.message : "Não encontrei essa cifra."),
+  });
+
+  const openMutation = useMutation({
+    mutationFn: (url: string) => abrir({ data: { url } }),
+    onSuccess: (data) => setResult(data),
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Não consegui abrir essa cifra."),
   });
 
   const saveMutation = useMutation({
@@ -176,6 +193,31 @@ export function BuscaCifraWeb({
           Buscar
         </Button>
       </div>
+
+      {options && options.length > 0 ? (
+        <ul className="divide-y rounded-lg border">
+          {options.map((option) => (
+            <li key={option.url}>
+              <button
+                type="button"
+                disabled={openMutation.isPending}
+                onClick={() => openMutation.mutate(option.url)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{option.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {option.artist}
+                  </span>
+                </span>
+                {openMutation.isPending ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
+                ) : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

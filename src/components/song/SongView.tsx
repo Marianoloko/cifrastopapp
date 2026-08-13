@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Contrast,
+  Eye,
   Link2,
   ListMusic,
+  Loader2,
   Maximize2,
   Minus,
   Mic2,
@@ -16,7 +18,6 @@ import {
   Plus,
   RotateCcw,
   Settings2,
-  Sparkles,
   Type,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ import {
   easyVersion,
   type DiagramInstrument,
 } from "@/lib/chord-instruments";
+import { buscarKaraoke } from "@/lib/cifra-search.functions";
 import { extractChords, isChordLine, transposeChord, transposeText } from "@/lib/chords";
 import {
   getSavedDiagramInstrument,
@@ -73,6 +75,16 @@ export type Song = {
 
 const HIGH_CONTRAST = { container: "#000000", lyric: "#FFFFFF", chord: "#FFD400", section: "#9CA3AF" };
 
+const SPEEDS = [0.5, 1, 1.5, 2];
+
+type DisplayMode = "ambos" | "letra" | "cifra";
+
+const DISPLAY_MODES: { id: DisplayMode; label: string; icon: string }[] = [
+  { id: "ambos", label: "Cifra + Letra", icon: "🎼" },
+  { id: "letra", label: "Ocultar cifras (só letra)", icon: "📝" },
+  { id: "cifra", label: "Ocultar letra (só cifras)", icon: "🎸" },
+];
+
 export type PlaylistItem = { id: string; title: string; artist?: string };
 
 export function SongView({
@@ -95,27 +107,32 @@ export function SongView({
   const [semitones, setSemitones] = useState(0);
   const [askKeep, setAskKeep] = useState(false);
   const [stage, setStage] = useState(false);
-  const [contrast, setContrast] = useState(false);
+  const [contrast] = useState(false);
   const [scrolling, setScrolling] = useState(false);
-  const [speed, setSpeed] = useState(3);
-  const [bigLyrics, setBigLyrics] = useState(mode === "cantor");
-  const [hideChords, setHideChords] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [bigLyrics] = useState(mode === "cantor");
+  const [display, setDisplay] = useState<DisplayMode>("ambos");
   const [easy, setEasy] = useState(false);
   const [instrument, setInstrument] = useState<DiagramInstrument>("violao");
   const [openChord, setOpenChord] = useState<string | null>(null);
   const [mediaUrl, setMediaUrl] = useState(song.media_url ?? "");
   const [karaoke, setKaraoke] = useState(false);
+  const [karaokeMsg, setKaraokeMsg] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const speedRef = useRef(speed);
   speedRef.current = speed;
 
+  const isRemote = song.id.startsWith("web-");
+  const searchKaraoke = useServerFn(buscarKaraoke);
+
   useEffect(() => {
     setSemitones(getSavedTranspose(song.id));
     setInstrument(getSavedDiagramInstrument() as DiagramInstrument);
     setMediaUrl(song.media_url ?? "");
-  }, [song.id]);
+    setKaraokeMsg(null);
+  }, [song.id, song.media_url]);
 
   useEffect(() => {
     setFontSize(getFontSize());
@@ -131,12 +148,29 @@ export function SongView({
 
   const mediaMutation = useMutation({
     mutationFn: async (url: string) => {
+      if (isRemote) return;
       const { error } = await supabase
         .from("songs")
         .update({ media_url: url || null } as never)
         .eq("id", song.id);
       if (error) throw error;
     },
+  });
+
+  const karaokeMutation = useMutation({
+    mutationFn: () => searchKaraoke({ data: { title: song.title, artist: song.artist ?? "" } }),
+    onSuccess: (result) => {
+      if (!result.videoId) {
+        setKaraokeMsg("⚠️ Não há karaokê disponível para esta música");
+        return;
+      }
+      const url = `https://www.youtube.com/watch?v=${result.videoId}`;
+      setMediaUrl(url);
+      setKaraoke(true);
+      setKaraokeMsg(null);
+      mediaMutation.mutate(url);
+    },
+    onError: () => setKaraokeMsg("⚠️ Não há karaokê disponível para esta música"),
   });
 
   const band = useBandSync((state) => {
@@ -164,7 +198,7 @@ export function SongView({
     if (!scrolling) return;
     let frame = 0;
     const step = () => {
-      window.scrollBy(0, speedRef.current * 0.4);
+      window.scrollBy(0, speedRef.current * 1.2);
       frame = window.requestAnimationFrame(step);
     };
     frame = window.requestAnimationFrame(step);
@@ -185,8 +219,14 @@ export function SongView({
     setAskKeep(true);
   };
 
+  const changeSpeed = (delta: number) =>
+    setSpeed((value) => Math.min(3, Math.max(0.25, Number((value + delta).toFixed(2)))));
+
+  const hideChords = display === "letra";
+  const hideLyrics = display === "cifra";
   const showDiagrams = mode !== "cantor" && !hideChords;
   const showPanel = mode === "voz-som";
+  const activeDisplay = DISPLAY_MODES.find((item) => item.id === display) ?? DISPLAY_MODES[0];
 
   const index = playlist.findIndex((item) => item.id === song.id);
   const canNavigate = Boolean(onSelectSong) && playlist.length > 1 && index >= 0;
@@ -251,18 +291,45 @@ export function SongView({
   ) : null;
 
   return (
-    <div className={cn("space-y-4", showPanel ? "pb-[19rem]" : "pb-24")}>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Voltar
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-bold text-foreground">{song.title}</h2>
-          <p className="truncate text-xs text-muted-foreground">
-            {song.artist || "Sem artista"} · Tom {song.key} · {song.capo}
-          </p>
+    <div className={cn("space-y-4 px-1", showPanel ? "pb-[21rem]" : "pb-32")}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <Button variant="ghost" size="sm" className="shrink-0 px-2" onClick={onBack}>
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Voltar</span>
+          </Button>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-bold text-foreground">{song.title}</h2>
+            <p className="truncate text-xs text-muted-foreground">
+              {song.artist || "Sem artista"} · Tom {song.key} · {song.capo}
+            </p>
+          </div>
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 rounded-full"
+              aria-label="Alternar exibição de cifra e letra"
+            >
+              <Eye className="size-4 text-primary" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Exibição</DropdownMenuLabel>
+            {DISPLAY_MODES.map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                onSelect={() => setDisplay(item.id)}
+                className={cn(display === item.id && "bg-accent")}
+              >
+                {item.icon} {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {navBar}
@@ -288,7 +355,7 @@ export function SongView({
       {!stage && showSettings ? (
         <div className="space-y-4 rounded-xl border bg-card p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="w-24 text-xs font-semibold text-muted-foreground">Tom</span>
+            <span className="w-20 text-xs font-semibold text-muted-foreground">Tom</span>
             <Button variant="outline" size="icon" onClick={() => changeTom(-1)}>
               <Minus className="size-4" aria-hidden="true" />
               <span className="sr-only">Descer meio tom</span>
@@ -336,7 +403,7 @@ export function SongView({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="w-24 text-xs font-semibold text-muted-foreground">Fonte</span>
+            <span className="w-20 text-xs font-semibold text-muted-foreground">Fonte</span>
             <Button
               variant="outline"
               size="icon"
@@ -357,7 +424,7 @@ export function SongView({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="w-24 text-xs font-semibold text-muted-foreground">Rolagem</span>
+            <span className="w-20 text-xs font-semibold text-muted-foreground">Rolagem</span>
             <Button variant="outline" size="icon" onClick={() => setScrolling((v) => !v)}>
               {scrolling ? (
                 <Pause className="size-4" aria-hidden="true" />
@@ -368,17 +435,17 @@ export function SongView({
             </Button>
             <Slider
               value={[speed]}
-              min={1}
-              max={10}
-              step={1}
+              min={0.25}
+              max={3}
+              step={0.25}
               onValueChange={([v]) => setSpeed(v)}
               className="flex-1"
             />
-            <span className="w-6 text-center text-xs text-muted-foreground">{speed}</span>
+            <span className="w-10 text-center text-xs text-muted-foreground">{speed}x</span>
           </div>
 
           <Button
-            variant={stage ? "default" : "outline"}
+            variant="outline"
             size="sm"
             className="w-full"
             onClick={() => setStage(true)}
@@ -386,6 +453,44 @@ export function SongView({
             <Maximize2 className="size-4" aria-hidden="true" />
             Modo Palco
           </Button>
+        </div>
+      ) : null}
+
+      {!stage ? (
+        <div className="space-y-2 rounded-xl border bg-card p-3">
+          <p className="text-sm font-semibold text-card-foreground">
+            🎤 Deseja vincular um Karaokê/Playback?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={karaokeMutation.isPending}
+              onClick={() => karaokeMutation.mutate()}
+            >
+              {karaokeMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Mic2 className="size-4" aria-hidden="true" />
+              )}
+              Buscar karaokê no YouTube
+            </Button>
+            {mediaUrl ? (
+              <Button
+                size="sm"
+                variant={karaoke ? "default" : "ghost"}
+                onClick={() => {
+                  setKaraoke((v) => !v);
+                  if (!karaoke) setScrolling(true);
+                }}
+              >
+                Rolagem junto com o áudio
+              </Button>
+            ) : null}
+          </div>
+          {karaokeMsg ? (
+            <p className="text-xs font-medium text-destructive">{karaokeMsg}</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -420,17 +525,41 @@ export function SongView({
               Salvar
             </Button>
           </div>
-          <Button
-            size="sm"
-            variant={karaoke ? "default" : "outline"}
-            onClick={() => {
-              setKaraoke((v) => !v);
-              if (!karaoke) setScrolling(true);
-            }}
-          >
-            <Mic2 className="size-4" aria-hidden="true" />
-            Modo Karaokê (rolagem junto com o áudio)
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Tema da cifra</span>
+            {CIFRA_THEMES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onThemeChange(option.id)}
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-[11px]",
+                  themeId === option.id ? "border-primary text-primary" : "border-border",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Type className="size-4 text-muted-foreground" aria-hidden="true" />
+            {DIAGRAM_INSTRUMENTS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => {
+                  setInstrument(option.id);
+                  saveDiagramInstrument(option.id);
+                }}
+                className={cn(
+                  "rounded-lg border px-2 py-1 text-[11px]",
+                  instrument === option.id ? "border-primary text-primary" : "border-border",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <BandSyncPanel
             room={band.room}
             leader={band.leader}
@@ -450,52 +579,20 @@ export function SongView({
           style={{ backgroundColor: theme.container }}
         >
           {chords.map((chord) => (
-            <ChordDiagram key={chord} chord={chord} color={theme.chord} instrument={instrument} />
+            <button key={chord} type="button" onClick={() => setOpenChord(chord)}>
+              <ChordDiagram chord={chord} color={theme.chord} instrument={instrument} />
+            </button>
           ))}
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <div className="mr-auto flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => changeFont(-2)}
-            aria-label="Diminuir tamanho da letra"
-          >
-            <span className="text-xs font-bold">A−</span>
-          </Button>
-          <span className="w-8 text-center text-xs text-muted-foreground">{fontSize}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => changeFont(2)}
-            aria-label="Aumentar tamanho da letra"
-          >
-            <span className="text-sm font-bold">A+</span>
-          </Button>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setScrolling((v) => !v)}>
-          {scrolling ? (
-            <Pause className="size-4" aria-hidden="true" />
-          ) : (
-            <Play className="size-4" aria-hidden="true" />
-          )}
-          Rolagem
-        </Button>
-        <Button variant={stage ? "default" : "outline"} size="sm" onClick={() => setStage((v) => !v)}>
-          <Maximize2 className="size-4" aria-hidden="true" />
-          Modo Palco
-        </Button>
-      </div>
-
       <div
-        className="overflow-x-auto rounded-2xl border border-border/40 p-4 shadow-sm sm:p-5"
+        className="rounded-2xl border border-border/40 px-4 py-4 shadow-sm sm:px-6"
         style={{ backgroundColor: theme.container, color: theme.lyric }}
       >
         <pre
           className={cn(
-            "whitespace-pre font-mono tabular-nums [font-variant-ligatures:none]",
+            "whitespace-pre-wrap break-words font-mono tabular-nums [font-variant-ligatures:none] [overflow-wrap:anywhere]",
             stage || bigLyrics ? "leading-[1.85]" : "leading-[1.7]",
           )}
           style={{ fontSize: `${stage || bigLyrics ? fontSize + 5 : fontSize}px` }}
@@ -504,6 +601,7 @@ export function SongView({
             const isSection = /^\s*\[.*\]\s*$/.test(line);
             const chordLine = isChordLine(line);
             if (chordLine && hideChords) return null;
+            if (hideLyrics && !chordLine && !isSection && line.trim()) return null;
             const color = isSection ? theme.section : chordLine ? theme.chord : theme.lyric;
             return (
               <span
@@ -541,20 +639,21 @@ export function SongView({
       {navBar}
 
       <Dialog open={openChord !== null} onOpenChange={(open) => !open && setOpenChord(null)}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Acorde {openChord}</DialogTitle>
-            <DialogDescription>Veja como montar em cada instrumento.</DialogDescription>
+        <DialogContent className="max-h-[85vh] w-[calc(100vw-1.5rem)] max-w-[21rem] overflow-y-auto rounded-2xl p-4">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base">Acorde {openChord}</DialogTitle>
+            <DialogDescription className="text-xs">
+              Toque nas notas para destacar. Verde neon = nota do acorde.
+            </DialogDescription>
           </DialogHeader>
           {openChord ? (
-            <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted p-3">
+            <div className="grid grid-cols-2 gap-3">
               {DIAGRAM_INSTRUMENTS.map((option) => (
-                <div key={option.id} className="flex flex-col items-center gap-1">
-                  <ChordDiagram
-                    chord={openChord}
-                    color="var(--foreground)"
-                    instrument={option.id}
-                  />
+                <div
+                  key={option.id}
+                  className="flex flex-col items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-2"
+                >
+                  <ChordDiagram chord={openChord} instrument={option.id} interactive />
                   <span className="text-[10px] text-muted-foreground">{option.label}</span>
                 </div>
               ))}
@@ -575,22 +674,67 @@ export function SongView({
         </div>
       ) : null}
 
-      {stage ? (
-        <div className="fixed bottom-20 left-1/2 z-30 -translate-x-1/2">
-          <Button size="sm" onClick={() => setScrolling((v) => !v)}>
-            {scrolling ? (
-              <Pause className="size-4" aria-hidden="true" />
-            ) : (
-              <Play className="size-4" aria-hidden="true" />
-            )}
-            Rolagem
-          </Button>
+      {/* Controle flutuante de rolagem com ajuste rápido de velocidade */}
+      <div className="fixed bottom-20 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/60 bg-card/95 px-2 py-1 shadow-lg backdrop-blur">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => changeSpeed(-0.25)}
+          aria-label="Diminuir velocidade da rolagem"
+        >
+          <Minus className="size-4" aria-hidden="true" />
+        </Button>
+        <Button size="sm" className="rounded-full" onClick={() => setScrolling((v) => !v)}>
+          {scrolling ? (
+            <Pause className="size-4" aria-hidden="true" />
+          ) : (
+            <Play className="size-4" aria-hidden="true" />
+          )}
+          {speed}x
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => changeSpeed(0.25)}
+          aria-label="Aumentar velocidade da rolagem"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </Button>
+        <div className="ml-1 flex items-center gap-1 border-l border-border/60 pl-1">
+          {SPEEDS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSpeed(value)}
+              className={cn(
+                "rounded-full px-2 py-1 text-[10px] font-bold",
+                speed === value ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              )}
+            >
+              {value}x
+            </button>
+          ))}
         </div>
+      </div>
+
+      {stage ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="fixed right-3 top-3 z-40 rounded-full"
+          onClick={() => setStage(false)}
+        >
+          Sair do palco
+        </Button>
       ) : null}
+
+      <p className="sr-only">Exibição atual: {activeDisplay.label}</p>
 
       {mediaUrl ? (
         <MediaPlayer
-          url={song.media_url ?? mediaUrl}
+          url={mediaUrl}
           onPlayingChange={(playing) => {
             if (karaoke) setScrolling(playing);
           }}

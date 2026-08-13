@@ -273,95 +273,6 @@ export function Repertorio({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
-        {(
-          [
-            { id: "lista", label: "Músicas" },
-            { id: "pastas", label: "Pastas" },
-            { id: "lixeira", label: "Lixeira" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => {
-              setView(tab.id);
-              if (tab.id !== "pastas") setFolderId(null);
-            }}
-            className={
-              view === tab.id
-                ? "rounded-lg bg-card px-3 py-2 text-sm font-bold text-card-foreground shadow-sm"
-                : "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
-            }
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {view === "lista" ? (
-        <BuscaCifraWeb
-          userId={userId}
-          themeId={themeId}
-          onThemeChange={onThemeChange}
-          mode={mode}
-        />
-      ) : null}
-
-      {view === "lixeira" ? <Lixeira /> : null}
-
-      {view === "pastas" ? (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              disabled={createFolderMutation.isPending}
-              onClick={() => {
-                const name = window.prompt("Nome da pasta (ex.: Culto Domingo)");
-                if (name && name.trim()) createFolderMutation.mutate(name.trim());
-              }}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Nova pasta
-            </Button>
-          </div>
-          {(foldersQuery.data ?? []).length === 0 ? (
-            <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Nenhuma pasta criada ainda.
-            </p>
-          ) : (
-            (foldersQuery.data ?? []).map((folder) => (
-              <div key={folder.id} className="flex items-center gap-2 rounded-xl border bg-card p-3">
-                <button
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  onClick={() => setFolderId(folderId === folder.id ? null : folder.id)}
-                >
-                  <Folder className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="truncate text-sm font-semibold text-foreground">
-                    {folder.name}
-                  </span>
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                    {(folderSongsQuery.data ?? []).filter((row) => row.folder_id === folder.id).length}{" "}
-                    música(s)
-                  </span>
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Excluir pasta ${folder.name}`}
-                  onClick={() => deleteFolderMutation.mutate(folder.id)}
-                >
-                  <Trash2 className="size-4 text-destructive" aria-hidden="true" />
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-      ) : null}
-
-      {view === "lixeira" ? null : (
-      <>
       <div className="relative">
         <Search
           className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -370,11 +281,88 @@ export function Repertorio({
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por título ou artista"
+          placeholder="Buscar no meu repertório ou na web"
           className="pl-9"
         />
       </div>
 
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <button
+          type="button"
+          onClick={() => setFolderId(null)}
+          className={
+            folderId === null
+              ? "shrink-0 rounded-xl border border-primary bg-primary/10 px-3 py-2 text-xs font-bold text-primary"
+              : "shrink-0 rounded-xl border bg-card px-3 py-2 text-xs font-medium text-muted-foreground"
+          }
+        >
+          Todas ({songs.length})
+        </button>
+        {(foldersQuery.data ?? []).map((folder) => (
+          <span
+            key={folder.id}
+            className={
+              folderId === folder.id
+                ? "flex shrink-0 items-center gap-1 rounded-xl border border-primary bg-primary/10 px-2 py-2 text-xs font-bold text-primary"
+                : "flex shrink-0 items-center gap-1 rounded-xl border bg-card px-2 py-2 text-xs font-medium text-muted-foreground"
+            }
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1"
+              onClick={() => setFolderId(folderId === folder.id ? null : folder.id)}
+            >
+              <Folder className="size-3.5" aria-hidden="true" />
+              {folder.name} (
+              {(folderSongsQuery.data ?? []).filter((row) => row.folder_id === folder.id).length})
+            </button>
+            <button
+              type="button"
+              aria-label={`Excluir pasta ${folder.name}`}
+              onClick={() => deleteFolderMutation.mutate(folder.id)}
+            >
+              <Trash2 className="size-3.5 text-destructive" aria-hidden="true" />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          disabled={createFolderMutation.isPending}
+          onClick={() => {
+            const name = window.prompt("Nome da pasta (ex.: Louvores, Pagode)");
+            if (name && name.trim()) createFolderMutation.mutate(name.trim());
+          }}
+          className="flex shrink-0 items-center gap-1 rounded-xl border border-dashed px-3 py-2 text-xs font-semibold text-muted-foreground"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          Nova pasta
+        </button>
+        <button
+          type="button"
+          onClick={() => setView(view === "lixeira" ? "lista" : "lixeira")}
+          className={
+            view === "lixeira"
+              ? "shrink-0 rounded-xl border border-primary bg-primary/10 px-3 py-2 text-xs font-bold text-primary"
+              : "shrink-0 rounded-xl border bg-card px-3 py-2 text-xs font-medium text-muted-foreground"
+          }
+        >
+          Lixeira
+        </button>
+      </div>
+
+      {view === "lixeira" ? <Lixeira /> : null}
+
+      {view === "lixeira" ? null : (
+        <BuscaCifraWeb
+          userId={userId}
+          themeId={themeId}
+          onThemeChange={onThemeChange}
+          mode={mode}
+        />
+      )}
+
+      {view === "lixeira" ? null : (
+      <>
       <div className="flex gap-2">
         <Button
           variant={showForm ? "outline" : "default"}
