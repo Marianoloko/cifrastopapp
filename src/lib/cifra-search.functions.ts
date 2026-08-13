@@ -1,14 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
 export type CifraWebResult = {
   title: string;
   artist: string;
   key: string;
   body: string;
   sourceUrl: string;
+};
+
+export type CifraWebOption = {
+  title: string;
+  artist: string;
+  key: string;
+  url: string;
 };
 
 const UA =
@@ -30,20 +35,8 @@ function stripTags(html: string) {
   return decodeEntities(html.replace(/<[^>]*>/g, "")).trim();
 }
 
-async function findCifraUrl(query: string): Promise<string | null> {
-  const response = await fetch(
-    `https://solr.sscdn.co/cifraclub/h/?q=${encodeURIComponent(query)}`,
-    { headers: { "user-agent": UA, "accept-language": "pt-BR,pt;q=0.9" } },
-  );
-  if (!response.ok) return null;
-  const payload = (await response.json()) as {
-    response?: { docs?: { t?: string; dns?: string; url?: string }[] };
-  };
-  const doc = (payload.response?.docs ?? []).find(
-    (item) => item.t === "2" && item.dns && item.url,
-  );
-  if (!doc) return null;
-  return `https://www.cifraclub.com.br/${doc.dns}/${doc.url}/`;
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function parseCifraPage(html: string, sourceUrl: string): CifraWebResult | null {
@@ -70,8 +63,6 @@ function parseCifraPage(html: string, sourceUrl: string): CifraWebResult | null 
     html.match(/id="cifra_tom"[^>]*>([\s\S]*?)<\/span>/i) ||
     html.match(/tom:\s*<[^>]*>([^<]{1,4})</i);
 
-  const titleCase = (value: string) =>
-    value.replace(/\b\w/g, (letter) => letter.toUpperCase());
   const slug = sourceUrl.split("/").filter(Boolean);
   const fallbackArtist = titleCase((slug[slug.length - 2] ?? "").replace(/-/g, " "));
   const fallbackTitle = titleCase((slug[slug.length - 1] ?? "").replace(/-/g, " "));
@@ -85,49 +76,78 @@ function parseCifraPage(html: string, sourceUrl: string): CifraWebResult | null 
   };
 }
 
-export const buscarCifraWeb = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+/** Lista as melhores opções encontradas para o termo digitado. */
+export const buscarCifraOpcoes = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z.object({ query: z.string().trim().min(2).max(120) }).parse(data),
   )
-  .handler(async ({ data, context }): Promise<CifraWebResult> => {
-    const logMiss = async () => {
-      try {
-        await context.supabase
-          .from("search_misses")
-          .insert({ query: data.query, user_id: context.userId });
-      } catch {
-        /* registro de falha é best-effort */
-      }
-    };
-
-    let url: string | null = null;
+  .handler(async ({ data }): Promise<CifraWebOption[]> => {
+    let payload: {
+      response?: { docs?: { t?: string; dns?: string; url?: string; m?: string; a?: string }[] };
+    } | null = null;
     try {
-      url = await findCifraUrl(data.query);
+      const response = await fetch(
+        `https://solr.sscdn.co/cifraclub/h/?q=${encodeURIComponent(data.query)}`,
+        { headers: { "user-agent": UA, "accept-language": "pt-BR,pt;q=0.9" } },
+      );
+      if (response.ok) payload = await response.json();
     } catch {
-      url = null;
-    }
-    if (!url) {
-      await logMiss();
-      throw new Error("Não encontrei essa cifra na web. Tente com artista + nome da música.");
+      payload = null;
     }
 
+    const docs = (payload?.response?.docs ?? []).filter(
+      (item) => item.t === "2" && item.dns && item.url,
+    );
+
+    return docs.slice(0, 12).map((doc) => ({
+      title: doc.m ? decodeEntities(doc.m) : titleCase((doc.url ?? "").replace(/-/g, " ")),
+      artist: doc.a ? decodeEntities(doc.a) : titleCase((doc.dns ?? "").replace(/-/g, " ")),
+      key: "",
+      url: `https://www.cifraclub.com.br/${doc.dns}/${doc.url}/`,
+    }));
+  });
+
+/** Abre uma opção escolhida e extrai título, artista, tom e a cifra completa. */
+export const abrirCifraWeb = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ url: z.string().url().max(400) }).parse(data),
+  )
+  .handler(async ({ data }): Promise<CifraWebResult> => {
+    if (!/^https:\/\/www\.cifraclub\.com\.br\//.test(data.url)) {
+      throw new Error("Endereço de cifra inválido.");
+    }
     let page: Response;
     try {
-      page = await fetch(url, { headers: { "user-agent": UA, "accept-language": "pt-BR,pt;q=0.9" } });
+      page = await fetch(data.url, {
+        headers: { "user-agent": UA, "accept-language": "pt-BR,pt;q=0.9" },
+      });
     } catch {
-      await logMiss();
       throw new Error("Não consegui abrir a página da cifra. Tente novamente.");
     }
-    if (!page.ok) {
-      await logMiss();
-      throw new Error("Não consegui abrir a página da cifra. Tente novamente.");
-    }
+    if (!page.ok) throw new Error("Não consegui abrir a página da cifra. Tente novamente.");
 
-    const parsed = parseCifraPage(await page.text(), url);
-    if (!parsed) {
-      await logMiss();
-      throw new Error("Encontrei a página, mas não consegui extrair a cifra.");
-    }
+    const parsed = parseCifraPage(await page.text(), data.url);
+    if (!parsed) throw new Error("Encontrei a página, mas não consegui extrair a cifra.");
     return parsed;
+  });
+
+/** Procura um vídeo de karaokê/playback no YouTube. */
+export const buscarKaraoke = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ title: z.string().trim().min(1).max(160), artist: z.string().trim().max(160) }).parse(data),
+  )
+  .handler(async ({ data }): Promise<{ videoId: string | null }> => {
+    const query = `${data.title} ${data.artist} Karaokê Playback`.trim();
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+        { headers: { "user-agent": UA, "accept-language": "pt-BR,pt;q=0.9" } },
+      );
+      if (!response.ok) return { videoId: null };
+      const html = await response.text();
+      const match = html.match(/"videoId":"([\w-]{11})"/);
+      return { videoId: match ? match[1] : null };
+    } catch {
+      return { videoId: null };
+    }
   });
