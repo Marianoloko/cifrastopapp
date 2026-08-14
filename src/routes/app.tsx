@@ -16,6 +16,8 @@ import {
 
 import { Paywall } from "@/components/PlanGrid";
 import { TrialBanner } from "@/components/TrialBanner";
+import { AuthGateProvider } from "@/components/app/AuthGate";
+import { InstallApp } from "@/components/app/InstallApp";
 import { Onboarding } from "@/components/app/Onboarding";
 import { Acompanhamento } from "@/components/tools/Acompanhamento";
 import { CentralEstudos } from "@/components/tools/CentralEstudos";
@@ -106,6 +108,7 @@ function AppPage() {
     },
   });
   const isAdmin = adminQuery.data === true;
+  const isGuest = !data?.userId;
   const maintenance = settingsQuery.data?.maintenance;
   const banner = settingsQuery.data?.banner;
   const { mode, setMode, ready: modeReady } = useUserMode();
@@ -159,11 +162,13 @@ function AppPage() {
     );
   }
 
-  if (status === "expired") return <Paywall />;
+  // Degustação livre: visitante sem conta usa o app; o cadastro é pedido ao salvar.
+  if (status === "expired" && !isGuest) return <Paywall />;
 
   const themeId = (data?.profile?.preferred_cifra_theme ?? "cifraclub") as CifraThemeId;
 
   return (
+    <AuthGateProvider signedIn={!isGuest}>
     <div className="min-h-screen bg-background pb-24">
       {banner?.enabled && banner.message ? (
         <div className="bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
@@ -188,6 +193,7 @@ function AppPage() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+        <InstallApp />
         <Button
           variant="outline"
           size="sm"
@@ -206,24 +212,32 @@ function AppPage() {
           <Sparkles className="size-4 text-primary" aria-hidden="true" />
           Extras
         </Button>
-        <Button variant="ghost" size="sm" onClick={signOut}>
-          <LogOut className="size-4" aria-hidden="true" />
-          Sair
-        </Button>
+        {isGuest ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate({ to: "/auth", search: { redirect: "/app" } })}
+          >
+            Entrar
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={signOut}>
+            <LogOut className="size-4" aria-hidden="true" />
+            Sair
+          </Button>
+        )}
         </div>
       </header>
 
       <main className="px-4">
         {/* As abas ficam montadas e apenas ocultas para o áudio não parar ao navegar. */}
         <div className={cn(tab === "repertorio" ? "block" : "hidden")}>
-          {data?.userId ? (
-            <Repertorio
-              userId={data.userId}
-              themeId={themeId}
-              onThemeChange={(id) => themeMutation.mutate(id)}
-              mode={mode ?? "instrumentista"}
-            />
-          ) : null}
+          <Repertorio
+            userId={data?.userId ?? null}
+            themeId={themeId}
+            onThemeChange={(id) => themeMutation.mutate(id)}
+            mode={mode ?? "instrumentista"}
+          />
         </div>
         <div className={cn(tab === "ferramentas" ? "block" : "hidden")}>
           <Ferramentas />
