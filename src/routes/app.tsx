@@ -44,7 +44,7 @@ import { USER_MODES, useUserMode } from "@/lib/user-mode";
 import { cn } from "@/lib/utils";
 import logoAsset from "@/assets/cifrastop-logo.png.asset.json";
 
-export const Route = createFileRoute("/_authenticated/app")({
+export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [
       { title: "Meu kit — CifraVocal Pro | CifraStop" },
