@@ -11,14 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ExperimentarRouteImport } from './routes/experimentar'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AfiliadosRouteImport } from './routes/afiliados'
 import { Route as AfiliadoRouteImport } from './routes/afiliado'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedImpulsionamentoRouteImport } from './routes/_authenticated/impulsionamento'
-import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -31,14 +30,14 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExperimentarRoute = ExperimentarRouteImport.update({
-  id: '/experimentar',
-  path: '/experimentar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AfiliadosRoute = AfiliadosRouteImport.update({
@@ -66,11 +65,6 @@ const AuthenticatedImpulsionamentoRoute =
     path: '/impulsionamento',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
-  id: '/app',
-  path: '/app',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -81,24 +75,22 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/afiliado': typeof AfiliadoRoute
   '/afiliados': typeof AfiliadosRoute
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
-  '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/app': typeof AuthenticatedAppRoute
   '/impulsionamento': typeof AuthenticatedImpulsionamentoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/afiliado': typeof AfiliadoRoute
   '/afiliados': typeof AfiliadosRoute
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
-  '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/app': typeof AuthenticatedAppRoute
   '/impulsionamento': typeof AuthenticatedImpulsionamentoRoute
 }
 export interface FileRoutesById {
@@ -107,12 +99,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/afiliado': typeof AfiliadoRoute
   '/afiliados': typeof AfiliadosRoute
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
-  '/experimentar': typeof ExperimentarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/impulsionamento': typeof AuthenticatedImpulsionamentoRoute
 }
 export interface FileRouteTypes {
@@ -121,24 +112,22 @@ export interface FileRouteTypes {
     | '/'
     | '/afiliado'
     | '/afiliados'
+    | '/app'
     | '/auth'
-    | '/experimentar'
     | '/reset-password'
     | '/sitemap.xml'
     | '/admin'
-    | '/app'
     | '/impulsionamento'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/afiliado'
     | '/afiliados'
+    | '/app'
     | '/auth'
-    | '/experimentar'
     | '/reset-password'
     | '/sitemap.xml'
     | '/admin'
-    | '/app'
     | '/impulsionamento'
   id:
     | '__root__'
@@ -146,12 +135,11 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/afiliado'
     | '/afiliados'
+    | '/app'
     | '/auth'
-    | '/experimentar'
     | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/admin'
-    | '/_authenticated/app'
     | '/_authenticated/impulsionamento'
   fileRoutesById: FileRoutesById
 }
@@ -160,8 +148,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AfiliadoRoute: typeof AfiliadoRoute
   AfiliadosRoute: typeof AfiliadosRoute
+  AppRoute: typeof AppRoute
   AuthRoute: typeof AuthRoute
-  ExperimentarRoute: typeof ExperimentarRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
@@ -182,18 +170,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/experimentar': {
-      id: '/experimentar'
-      path: '/experimentar'
-      fullPath: '/experimentar'
-      preLoaderRoute: typeof ExperimentarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/afiliados': {
@@ -231,13 +219,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImpulsionamentoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/app': {
-      id: '/_authenticated/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AuthenticatedAppRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -250,13 +231,11 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedAppRoute: typeof AuthenticatedAppRoute
   AuthenticatedImpulsionamentoRoute: typeof AuthenticatedImpulsionamentoRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedAppRoute: AuthenticatedAppRoute,
   AuthenticatedImpulsionamentoRoute: AuthenticatedImpulsionamentoRoute,
 }
 
@@ -268,8 +247,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AfiliadoRoute: AfiliadoRoute,
   AfiliadosRoute: AfiliadosRoute,
+  AppRoute: AppRoute,
   AuthRoute: AuthRoute,
-  ExperimentarRoute: ExperimentarRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }

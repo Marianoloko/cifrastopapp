@@ -460,6 +460,7 @@ export type Database = {
       apply_referral_code: { Args: { _code: string }; Returns: Json }
       claim_referral_reward: { Args: never; Returns: Json }
       generate_referral_code: { Args: never; Returns: string }
+      get_affiliate_network: { Args: never; Returns: Json }
       get_referral_stats: { Args: never; Returns: Json }
       has_role: {
         Args: {
