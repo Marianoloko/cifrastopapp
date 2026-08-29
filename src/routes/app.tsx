@@ -162,199 +162,198 @@ function AppPage() {
     );
   }
 
-  // Degustação livre: visitante sem conta usa o app; o cadastro é pedido ao salvar.
   if (status === "expired" && !isGuest) return <Paywall />;
 
   const themeId = (data?.profile?.preferred_cifra_theme ?? "cifraclub") as CifraThemeId;
 
   return (
     <AuthGateProvider signedIn={!isGuest}>
-    <div className="min-h-screen bg-background pb-24">
-      {banner?.enabled && banner.message ? (
-        <div className="bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
-          {banner.message}
-        </div>
-      ) : null}
-      {status === "trial" ? (
-        <TrialBanner
-          remainingMs={remainingMs}
-          onSubscribe={() =>
-            openWhatsApp("Olá! Quero assinar o plano Mensal do CifraStop (R$ 15,00 por mês).")
-          }
-        />
-      ) : null}
-
-      <header className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <img src={logoAsset.url} alt="Logo CifraStop" className="size-9" />
-          <div>
-          <h1 className="text-base font-extrabold text-foreground">CifraVocal Pro</h1>
-          <p className="text-[11px] text-muted-foreground">Kit completo do músico</p>
+      <div className="min-h-screen bg-background pb-24">
+        {banner?.enabled && banner.message ? (
+          <div className="bg-primary px-4 py-2 text-center text-xs font-semibold text-primary-foreground">
+            {banner.message}
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-        <InstallApp />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setModeOpen(true)}
-          aria-label="Escolher modo de uso"
-        >
-          <UserCog className="size-4 text-primary" aria-hidden="true" />
-          {activeMode ? `${activeMode.emoji} ${activeMode.label}` : "Modo"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setHubOpen(true)}
-          aria-label="Abrir extras: programa de afiliados e reclamações"
-        >
-          <Sparkles className="size-4 text-primary" aria-hidden="true" />
-          Extras
-        </Button>
-        {isGuest ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate({ to: "/auth", search: { redirect: "/app" } })}
-          >
-            Entrar
-          </Button>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="size-4" aria-hidden="true" />
-            Sair
-          </Button>
-        )}
-        </div>
-      </header>
-
-      <main className="px-4">
-        {/* As abas ficam montadas e apenas ocultas para o áudio não parar ao navegar. */}
-        <div className={cn(tab === "repertorio" ? "block" : "hidden")}>
-          <Repertorio
-            userId={data?.userId ?? null}
-            themeId={themeId}
-            onThemeChange={(id) => themeMutation.mutate(id)}
-            mode={mode ?? "instrumentista"}
-          />
-        </div>
-        <div className={cn(tab === "ferramentas" ? "block" : "hidden")}>
-          <Ferramentas />
-        </div>
-        <div className={cn(tab === "estudos" ? "block" : "hidden")}>
-          <CentralEstudos />
-        </div>
-        {tab === "perfil" ? (
-          <Perfil
-            email={data?.email ?? ""}
-            phone={(data?.profile as { phone?: string | null } | null)?.phone ?? null}
-            status={status}
+        ) : null}
+        {status === "trial" ? (
+          <TrialBanner
             remainingMs={remainingMs}
-            periodEnd={data?.subscription?.current_period_end ?? null}
-            mode={mode}
-            onModeChange={setMode}
-            onSignOut={signOut}
+            onSubscribe={() =>
+              openWhatsApp("Olá! Quero assinar o plano Mensal do CifraStop (R$ 15,00 por mês).")
+            }
           />
         ) : null}
-      </main>
 
-      <Onboarding />
-
-      <Dialog
-        open={modeOpen || (modeReady && !mode)}
-        onOpenChange={(open) => {
-          if (!open && !mode) setMode("instrumentista");
-          setModeOpen(open);
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Selecione seu modo</DialogTitle>
-            <DialogDescription>
-              Cada modo destaca o que você mais usa. Salvamos sua última escolha.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            {USER_MODES.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setMode(item.id);
-                  setModeOpen(false);
-                }}
-                className={cn(
-                  "rounded-xl border p-3 text-left transition-colors",
-                  mode === item.id ? "border-primary bg-primary/10" : "border-border",
-                )}
-              >
-                <p className="text-sm font-semibold text-foreground">
-                  {item.emoji} {item.label}
-                </p>
-                <p className="text-xs text-muted-foreground">{item.description}</p>
-              </button>
-            ))}
+        <header className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <img src={logoAsset.url} alt="Logo CifraStop" className="size-9" />
+            <div>
+              <h1 className="text-base font-extrabold text-foreground">CifraVocal Pro</h1>
+              <p className="text-[11px] text-muted-foreground">Kit completo do músico</p>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Sheet open={hubOpen} onOpenChange={setHubOpen}>
-        <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
-          <SheetHeader className="border-b px-4 py-4 text-left">
-            <SheetTitle className="flex items-center gap-2 text-base">
+          <div className="flex items-center gap-1">
+            <InstallApp />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModeOpen(true)}
+              aria-label="Escolher modo de uso"
+            >
+              <UserCog className="size-4 text-primary" aria-hidden="true" />
+              {activeMode ? `${activeMode.emoji} ${activeMode.label}` : "Modo"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHubOpen(true)}
+              aria-label="Abrir extras: programa de afiliados e reclamações"
+            >
               <Sparkles className="size-4 text-primary" aria-hidden="true" />
               Extras
-            </SheetTitle>
-            <SheetDescription>
-              Puxe a tela da direita para a esquerda a qualquer momento para abrir este hub.
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="grid grid-cols-3 gap-2 border-b p-3">
-            {HUB_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setHubTab(item.id)}
-                className={cn(
-                  "flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
-                  hubTab === item.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground",
-                )}
+            </Button>
+            {isGuest ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: "/auth", search: { redirect: "/app" } })}
               >
-                <item.icon className="size-4" aria-hidden="true" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="px-4 pb-8">
-            {hubTab === "indicacoes" ? <Indicacoes /> : null}
-            {hubTab === "suporte" ? <Suporte /> : null}
-            {hubTab === "acompanhamento" ? <Acompanhamento /> : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t bg-card">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            className={cn(
-              "flex flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
-              tab === item.id ? "text-primary" : "text-muted-foreground",
+                Entrar
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut className="size-4" aria-hidden="true" />
+                Sair
+              </Button>
             )}
-          >
-            <item.icon className="size-5" aria-hidden="true" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
+          </div>
+        </header>
 
-      <footer className="px-4 pt-6 text-center text-[11px] text-muted-foreground">
-        Feito para músicos · Sincronizado na nuvem
-      </footer>
-    </div>
+        <main className="px-4">
+          <div className={cn(tab === "repertorio" ? "block" : "hidden")}>
+            <Repertorio
+              userId={data?.userId ?? null}
+              themeId={themeId}
+              onThemeChange={(id) => themeMutation.mutate(id)}
+              mode={mode ?? "instrumentista"}
+            />
+          </div>
+          <div className={cn(tab === "ferramentas" ? "block" : "hidden")}>
+            <Ferramentas />
+          </div>
+          <div className={cn(tab === "estudos" ? "block" : "hidden")}>
+            <CentralEstudos />
+          </div>
+          {tab === "perfil" ? (
+            <Perfil
+              email={data?.email ?? ""}
+              phone={(data?.profile as { phone?: string | null } | null)?.phone ?? null}
+              status={status}
+              remainingMs={remainingMs}
+              periodEnd={data?.subscription?.current_period_end ?? null}
+              mode={mode}
+              onModeChange={setMode}
+              onSignOut={signOut}
+            />
+          ) : null}
+        </main>
+
+        <Onboarding />
+
+        <Dialog
+          open={modeOpen || (modeReady && !mode)}
+          onOpenChange={(open) => {
+            if (!open && !mode) setMode("instrumentista");
+            setModeOpen(open);
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Selecione seu modo</DialogTitle>
+              <DialogDescription>
+                Cada modo destaca o que você mais usa. Salvamos sua última escolha.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              {USER_MODES.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setMode(item.id);
+                    setModeOpen(false);
+                  }}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition-colors",
+                    mode === item.id ? "border-primary bg-primary/10" : "border-border",
+                  )}
+                >
+                  <p className="text-sm font-semibold text-foreground">
+                    {item.emoji} {item.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Sheet open={hubOpen} onOpenChange={setHubOpen}>
+          <SheetContent side="right" className="w-[92vw] max-w-sm overflow-y-auto p-0">
+            <SheetHeader className="border-b px-4 py-4 text-left">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="size-4 text-primary" aria-hidden="true" />
+                Extras
+              </SheetTitle>
+              <SheetDescription>
+                Puxe a tela da direita para a esquerda a qualquer momento para abrir este hub.
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="grid grid-cols-3 gap-2 border-b p-3">
+              {HUB_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setHubTab(item.id)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
+                    hubTab === item.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground",
+                  )}
+                >
+                  <item.icon className="size-4" aria-hidden="true" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="px-4 pb-8">
+              {hubTab === "indicacoes" ? <Indicacoes /> : null}
+              {hubTab === "suporte" ? <Suporte /> : null}
+              {hubTab === "acompanhamento" ? <Acompanhamento /> : null}
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t bg-card">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={cn(
+                "flex flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
+                tab === item.id ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              <item.icon className="size-5" aria-hidden="true" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <footer className="px-4 pt-6 text-center text-[11px] text-muted-foreground">
+          Feito para músicos · Sincronizado na nuvem
+        </footer>
+      </div>
+    </AuthGateProvider>
   );
 }
