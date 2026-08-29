@@ -27,6 +27,9 @@ jobs:
       - name: Install Capacitor CLI
         run: npm install @capacitor/cli @capacitor/core @capacitor/android
 
+      - name: Initialize Capacitor
+        run: npx cap init "CifraStop" "com.cifrastop.app" --web-dir "dist" || true
+
       - name: Add Android Platform
         run: npx cap add android || true
 
