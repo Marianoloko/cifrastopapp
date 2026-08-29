@@ -19,21 +19,13 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Web
-        run: npx vite build
+      - name: Build Web and Android Shell
+        run: npm run build:web
         env:
           NODE_ENV: production
 
-      - name: Prepare Web Dir
-        run: |
-          mkdir -p dist
-          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script>window.location.href="https://seusite.com";</script></head><body style="background:#000;"></body></html>' > dist/index.html
-
       - name: Install Capacitor CLI
         run: npm install @capacitor/cli @capacitor/core @capacitor/android
-
-      - name: Initialize Capacitor
-        run: npx cap init "CifraStop" "com.cifrastop.app" --web-dir "dist" || true
 
       - name: Add Android Platform
         run: npx cap add android || true
