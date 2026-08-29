@@ -24,6 +24,13 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Ensure Dist Folder
+        run: |
+          if [ ! -d "dist" ]; then
+            mkdir -p dist
+            cp -r .tanstack/start/public/* dist/ 2>/dev/null || cp -r build/* dist/ 2>/dev/null || true
+          fi
+
       - name: Install Capacitor CLI
         run: npm install @capacitor/cli @capacitor/core @capacitor/android
 
