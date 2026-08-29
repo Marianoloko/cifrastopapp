@@ -24,8 +24,11 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Install Capacitor CLI
+        run: npm install @capacitor/cli @capacitor/core @capacitor/android
+
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: npx @capacitor/cli cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
