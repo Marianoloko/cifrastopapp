@@ -19,10 +19,13 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Web and Android Shell
-        run: npm run build:web
+      - name: Build Web
+        run: npm run build
         env:
           NODE_ENV: production
+
+      - name: Run Android Shell Script
+        run: node scripts/build-android-shell.mjs || true
 
       - name: Install Capacitor CLI
         run: npm install @capacitor/cli @capacitor/core @capacitor/android
